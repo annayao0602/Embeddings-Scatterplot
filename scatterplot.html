@@ -69,6 +69,12 @@
         <div id = "panel">
             <div id = "controls" class = "card">
                 <h1>Controls</h1>
+                <label for="color-mode-select">Color Mode:</label>
+                <select id="color-mode-select">
+                    <option value="direct sponsor" selected>Direct Sponsor</option>
+                    <option value="awarded">Awarded or Not</option>
+                    <option value="amount">Amount Awarded (Log Scale)</option>
+                </select>
             </div>
             <div id = "info" class = "card">
                 <h1>Information</h1>
@@ -89,7 +95,7 @@
 
             const data = lines.map(line => {
                 const { Title, 'Proposal PI' : ProposalPI, 'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory, 'HURON Authorized Amount' : HURONAuthorizedAmount, umap_x, umap_y } = JSON.parse(line);
-                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : HURONAuthorizedAmount ?? '0', umap_x: +umap_x, umap_y: +umap_y };
+                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : +parsed[HURONAuthorizedAmount] ?? '0', umap_x: +umap_x, umap_y: +umap_y };
             });
 
             const x = d3.scaleLinear()
@@ -100,15 +106,33 @@
             y.domain([-5,15]).nice();
 
             const colorScale = d3.scaleOrdinal(d3.schemeSet1);
+            let colorMode = 'direct sponsor';
+            const amountColorScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 7]); // log10 scale for amounts up to 10 million
 
             const fillColor = fc
                 .webglFillColor()
                 .value(d => {
-                    if (d['Proposal Direct Sponsor Category'] === 'No Direct Sponsor') {
-                        return [0.5, 0.0, 0.9, 1.0]; 
+                    if (colorMode === 'direct sponsor') {
+                        if (d['Proposal Direct Sponsor Category'] === 'No Direct Sponsor') {
+                        return [0.5, 0.0, 0.9, 1.0]; }
+                        
+                        const color = d3.color(colorScale(d['Proposal Direct Sponsor Category']));
+                        return [color.r / 255, color.g / 255, color.b / 255, 1.0]; 
                     }
-                    const color = d3.color(colorScale(d['Proposal Direct Sponsor Category']));
-                    return [color.r / 255, color.g / 255, color.b / 255, 1.0]; 
+                    else if (colorMode === 'awarded') {
+                        return +d['HURON Authorized Amount'] > 0 ? [0.0, 0.5, 0.0, 1.0] : [0.5, 0.0, 0.0, 1.0]; 
+                    }
+                    else if (colorMode === 'amount') {
+                        const amount = +d['HURON Authorized Amount'];
+                        if (amount <= 0) {
+                            return [0.5, 0.0, 0.0, 1.0]; 
+                        }
+                        else {
+                            const logAmount = Math.log10(+d['HURON Authorized Amount']); 
+                            const color = d3.color(amountColorScale(amount));
+                            return [color.r / 255, color.g / 255, color.b / 255, 1.0];
+                        }
+                    }
                 })
                 .data(data);
 
@@ -192,6 +216,11 @@
                     .datum(data)
                     .call(chart);
             };
+
+            d3.select('#color-mode-select').on('change', (event) => {
+                colorMode = event.target.value;
+                render();
+            });
 
             const zoom = fc.zoom().on('zoom', render);
 
