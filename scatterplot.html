@@ -72,7 +72,12 @@
             </div>
             <div id = "info" class = "card">
                 <h1>Information</h1>
+                <p>Click on a point in the scatterplot to see more information about the corresponding proposal.</p>
+                <p>Use mouse scroll to zoom in and out. Click and drag to pan.</p>
+                <p>Hover over a point to see a tooltip with the proposal title, PI, and direct sponsor category.</p>
             </div>
+            <div id = "legend" class = "card">
+                <h1>Legend</h1>
         </div>
     </div>
 
@@ -83,26 +88,26 @@
             const lines = text.trim().split('\n');
 
             const data = lines.map(line => {
-                const { Title, 'Proposal PI' : ProposalPI, 'Proposal Prime Sponsor Category' : ProposalPrimeSponsorCategory, 'HURON Authorized Amount' : HURONAuthorizedAmount, umap_x, umap_y } = JSON.parse(line);
-                return { Title, 'Proposal PI': ProposalPI,  'Proposal Prime Sponsor Category' : ProposalPrimeSponsorCategory ?? 'No Primary', 'HURON Authorized Amount' : HURONAuthorizedAmount ?? '0', umap_x: +umap_x, umap_y: +umap_y };
+                const { Title, 'Proposal PI' : ProposalPI, 'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory, 'HURON Authorized Amount' : HURONAuthorizedAmount, umap_x, umap_y } = JSON.parse(line);
+                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : HURONAuthorizedAmount ?? '0', umap_x: +umap_x, umap_y: +umap_y };
             });
 
             const x = d3.scaleLinear()
             const y = d3.scaleLinear()
 
+
             x.domain([0, 24]).nice();
             y.domain([-5,15]).nice();
-            console.log(x.domain(), y.domain());
 
             const colorScale = d3.scaleOrdinal(d3.schemeSet1);
 
             const fillColor = fc
                 .webglFillColor()
                 .value(d => {
-                    if (d['Proposal Prime Sponsor Category'] === 'No Primary') {
+                    if (d['Proposal Direct Sponsor Category'] === 'No Direct Sponsor') {
                         return [0.5, 0.0, 0.9, 1.0]; 
                     }
-                    const color = d3.color(colorScale(d['Proposal Prime Sponsor Category']));
+                    const color = d3.color(colorScale(d['Proposal Direct Sponsor Category']));
                     return [color.r / 255, color.g / 255, color.b / 255, 1.0]; 
                 })
                 .data(data);
@@ -121,8 +126,18 @@
                     context.enable(context.BLEND);
                     context.blendFunc(context.SRC_ALPHA, context.ONE_MINUS_SRC_ALPHA);
                 });
+            
 
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+            const legend = d3.select("#legend").append("div").attr("class", "legend-items");
+            const categories = Array.from(new Set(data.map(d => d['Proposal Direct Sponsor Category'])));
+            categories.forEach(category => {
+                const color = category === 'No Direct Sponsor' ? 'rgb(128, 0, 255)' : colorScale(category);
+                const item = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
+                item.append("div").style("width", "10px").style("height", "10px").style("background-color", color).style("margin-right", "10px");
+                item.append("span").text(category);
+            });
 
             const informationOverlay = fc
                 .seriesSvgPoint()
@@ -144,7 +159,7 @@
                                 .style('stroke', 'black')
                                 .style('stroke-opacity', 1);
                             tooltip.style("opacity", 0.8);
-                            tooltip.html(`<strong>Title</strong>: ${d.Title} <br> <strong>PI</strong>: ${d['Proposal PI']} <br> <strong>Primary Sponsor</strong>: ${d['Proposal Prime Sponsor Category']}`)
+                            tooltip.html(`<strong>Title</strong>: ${d.Title} <br> <strong>PI</strong>: ${d['Proposal PI']} <br> <strong>Direct Sponsor</strong>: ${d['Proposal Direct Sponsor Category']}`)
                                 .style("left", (event.pageX + 15) + "px")
                                 .style("top", (event.pageY - 20) + "px");
                         })
@@ -159,7 +174,7 @@
                                 <h2>Proposal Information</h2>
                                 <p><strong>Title:</strong> ${d.Title}</p>
                                 <p><strong>PI:</strong> ${d['Proposal PI']}</p>
-                                <p><strong>Primary Sponsor Category:</strong> ${d['Proposal Prime Sponsor Category']}</p>
+                                <p><strong>Direct Sponsor Category:</strong> ${d['Proposal Direct Sponsor Category']}</p>
                                 <p><strong>HURON Authorized Amount:</strong> $${d['HURON Authorized Amount']}</p>
                             `);
                         });
@@ -184,9 +199,12 @@
         
             render();
 
-        })
+        });
 
-        //color code: primary sponsor (NSF, NIH, DOE, etc.), awarded or not, amount awarded (logged)
+
+
+
+        //color code: direct sponsor (NSF, NIH, DOE, etc.), awarded or not, amount awarded (logged)
         //grants, pubs, authors, test for 3x the data and see if lag is bad
         //department name? get from gates
         //index.html - add transparent backing to co authorship network
