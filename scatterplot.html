@@ -95,7 +95,7 @@
 
             const data = lines.map(line => {
                 const { Title, 'Proposal PI' : ProposalPI, 'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory, 'HURON Authorized Amount' : HURONAuthorizedAmount, umap_x, umap_y } = JSON.parse(line);
-                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : +parsed[HURONAuthorizedAmount] ?? '0', umap_x: +umap_x, umap_y: +umap_y };
+                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : HURONAuthorizedAmount ?? '0', umap_x: +umap_x, umap_y: +umap_y };
             });
 
             const x = d3.scaleLinear()
