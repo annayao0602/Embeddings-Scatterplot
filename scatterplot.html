@@ -45,6 +45,7 @@
         box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 4px 10px 0 rgba(0, 0, 0, 0.19);
         padding: 10px;
         min-height:0;
+        font-family: Jura;
         border-radius: 15px;
     }
     .scatter_container {
@@ -60,6 +61,9 @@
         gap: 10px;
         padding: 10px;
         box-sizing: border-box;
+    }
+    #color-mode-select {
+        font-family: Jura;
     }
 
 </style>
@@ -95,7 +99,7 @@
 
             const data = lines.map(line => {
                 const { Title, 'Proposal PI' : ProposalPI, 'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory, 'HURON Authorized Amount' : HURONAuthorizedAmount, umap_x, umap_y } = JSON.parse(line);
-                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : HURONAuthorizedAmount ?? '0', umap_x: +umap_x, umap_y: +umap_y };
+                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : +HURONAuthorizedAmount ?? 0, umap_x: +umap_x, umap_y: +umap_y };
             });
 
             const x = d3.scaleLinear()
@@ -107,53 +111,16 @@
 
             const colorScale = d3.scaleOrdinal(d3.schemeSet1);
             let colorMode = 'direct sponsor';
-            const amountColorScale = d3.scaleSequential(d3.interpolateViridis).domain([0, 7]); // log10 scale for amounts up to 10 million
+            const amountExtent = d3.extent(data, d => d['HURON Authorized Amount']);
+            const amountColorScale = d3.scaleSequentialLog(d3.interpolateViridis)
+                .domain([1, amountExtent[1]]);
 
-            const fillColor = fc
-                .webglFillColor()
-                .value(d => {
-                    if (colorMode === 'direct sponsor') {
-                        if (d['Proposal Direct Sponsor Category'] === 'No Direct Sponsor') {
-                        return [0.5, 0.0, 0.9, 1.0]; }
-                        
-                        const color = d3.color(colorScale(d['Proposal Direct Sponsor Category']));
-                        return [color.r / 255, color.g / 255, color.b / 255, 1.0]; 
-                    }
-                    else if (colorMode === 'awarded') {
-                        return +d['HURON Authorized Amount'] > 0 ? [0.0, 0.5, 0.0, 1.0] : [0.5, 0.0, 0.0, 1.0]; 
-                    }
-                    else if (colorMode === 'amount') {
-                        const amount = +d['HURON Authorized Amount'];
-                        if (amount <= 0) {
-                            return [0.5, 0.0, 0.0, 1.0]; 
-                        }
-                        else {
-                            const logAmount = Math.log10(+d['HURON Authorized Amount']); 
-                            const color = d3.color(amountColorScale(amount));
-                            return [color.r / 255, color.g / 255, color.b / 255, 1.0];
-                        }
-                    }
-                })
-                .data(data);
-
-            const scatter = fc
-                .seriesWebglPoint()
-                .type(d3.symbolCircle)
-                .size(50)
-                .xScale(x)
-                .yScale(y)
-                .crossValue(d => d.umap_x)
-                .mainValue(d => d.umap_y)
-                .decorate(program => {
-                    fillColor(program);
-                    const context = program.context();
-                    context.enable(context.BLEND);
-                    context.blendFunc(context.SRC_ALPHA, context.ONE_MINUS_SRC_ALPHA);
-                });
-            
+            let fillColor;
+            let scatter;
 
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
+            /* --STATIC LEGEND---
             const legend = d3.select("#legend").append("div").attr("class", "legend-items");
             const categories = Array.from(new Set(data.map(d => d['Proposal Direct Sponsor Category'])));
             categories.forEach(category => {
@@ -161,7 +128,8 @@
                 const item = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
                 item.append("div").style("width", "10px").style("height", "10px").style("background-color", color).style("margin-right", "10px");
                 item.append("span").text(category);
-            });
+            }); 
+            */
 
             const informationOverlay = fc
                 .seriesSvgPoint()
@@ -207,8 +175,92 @@
 
             const chart = fc
                 .chartCartesian(x, y)
-                .webglPlotArea(scatter)
                 .svgPlotArea(informationOverlay);
+            
+            const updateChart = () => {
+                fillColor = fc
+                    .webglFillColor()
+                    .value(d => {
+                        if (colorMode === 'direct sponsor') {
+                            if (d['Proposal Direct Sponsor Category'] === 'No Direct Sponsor') {
+                                return [0.5, 0.0, 0.9, 1.0]; }
+                            
+                            const color = d3.color(colorScale(d['Proposal Direct Sponsor Category']));
+                            return [color.r / 255, color.g / 255, color.b / 255, 1.0]; 
+                        }
+                        else if (colorMode === 'awarded') {
+                            console.log("awarded color mode");
+                            return +d['HURON Authorized Amount'] > 0 ? [0.0, 0.65, 0.0, 1.0] : [0.7, 0.0, 0.0, 1.0]; 
+                        }
+                        else if (colorMode === 'amount') {
+                            console.log("amount color mode");
+                            const amount = +d['HURON Authorized Amount'];
+                            if (amount <= 0) {
+                                return [0.5, 0.2, 1.0, 1.0]; 
+                            }
+                            const logAmount = Math.log10(+d['HURON Authorized Amount']); 
+                            const color = d3.color(amountColorScale(amount));
+                            return [color.r / 255, color.g / 255, color.b / 255, 1.0];
+                            
+                        }                   
+                    })  
+                .data(data);
+
+                scatter = fc
+                    .seriesWebglPoint()
+                    .type(d3.symbolCircle)
+                    .size(50)
+                    .xScale(x)
+                    .yScale(y)
+                    .crossValue(d => d.umap_x)
+                    .mainValue(d => d.umap_y)
+                    .decorate(program => {
+                        fillColor(program);
+                        const context = program.context();
+                        context.enable(context.BLEND);
+                        context.blendFunc(context.SRC_ALPHA, context.ONE_MINUS_SRC_ALPHA);
+                    });
+                
+                chart.webglPlotArea(scatter);
+            }
+
+            const updateLegend = () => {
+                const legendContainer = d3.select("#legend");
+                legendContainer.select(".legend-items").remove();
+                const legend = legendContainer.append("div").attr("class", "legend-items");
+
+                if (colorMode === 'direct sponsor') {
+                    const categories = Array.from(new Set(data.map(d => d['Proposal Direct Sponsor Category'])));
+                    categories.forEach(category => {
+                        const color = category === 'No Direct Sponsor' ? 'rgb(128, 0, 255)' : colorScale(category);
+                        const item = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
+                        item.append("div").style("width", "10px").style("height", "10px").style("background-color", color).style("margin-right", "10px");
+                        item.append("span").text(category);
+                    });
+                }
+                else if (colorMode === 'awarded') {
+                    const awardedItem = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
+                    awardedItem.append("div").style("width", "10px").style("height", "10px").style("background-color", 'rgb(0, 128, 0)').style("margin-right", "10px");
+                    awardedItem.append("span").text('Awarded');
+
+                    const notAwardedItem = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
+                    notAwardedItem.append("div").style("width", "10px").style("height", "10px").style("background-color", 'rgb(128, 0, 0)').style("margin-right", "10px");
+                    notAwardedItem.append("span").text('Not Awarded');
+                }
+                else if (colorMode === 'amount') {
+                    const legendSvg = legend.append("svg").attr("width", 450).attr("height", 40);
+                    const defs = legendSvg.append("defs");
+                    const linearGradient = defs.append("linearGradient").attr("id", "linear-gradient");
+                    linearGradient.selectAll("stop")
+                        .data(amountColorScale.ticks().map((t, i, n) => ({ offset: `${100*i/n.length}%`, color: amountColorScale(t) })))
+                        .enter().append("stop")
+                        .attr("offset", d => d.offset)
+                        .attr("stop-color", d => d.color);
+                    legendSvg.append("rect").attr("width", 450).attr("height", 20).style("fill", "url(#linear-gradient)");
+                    legendSvg.append("text").attr("x", 0).attr("y", 35).text(d3.format("$,.0s")(amountExtent[0]));
+                    legendSvg.append("text").attr("x", 450).attr("y", 35).attr("text-anchor", "end").text(d3.format("$,.0s")(amountExtent[1]));
+                }
+            }
                 
 
             const render = () => {
@@ -219,6 +271,9 @@
 
             d3.select('#color-mode-select').on('change', (event) => {
                 colorMode = event.target.value;
+                console.log("Color mode changed to:", colorMode);
+                updateChart();
+                updateLegend();
                 render();
             });
 
@@ -226,6 +281,8 @@
 
             d3.select('#my_scatter').call(zoom, x, y);
         
+            updateChart();
+            updateLegend();
             render();
 
         });
