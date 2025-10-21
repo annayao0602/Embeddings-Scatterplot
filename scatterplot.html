@@ -85,7 +85,7 @@
                 <h1>Information</h1>
                 <p>Click on a point in the scatterplot to see more information about the corresponding proposal.</p>
                 <p>Use mouse scroll to zoom in and out. Click and drag to pan.</p>
-                <p>Hover over a point to see a tooltip with the proposal title, PI, and direct sponsor category.</p>
+                <p>Hover over a point to see the proposal title, PI, and direct sponsor category.</p>
             </div>
             <div id = "legend" class = "card">
                 <h1>Legend</h1>
@@ -177,7 +177,9 @@
 
             const chart = fc
                 .chartCartesian(x, y)
-                .svgPlotArea(informationOverlay);
+                .svgPlotArea(informationOverlay)
+                .xDecorate(s => s.style('display', 'none')) 
+                .yDecorate(s => s.style('display', 'none'));
             
             const updateChart = () => {
                 fillColor = fc
