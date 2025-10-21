@@ -79,6 +79,7 @@
                     <option value="awarded">Awarded or Not</option>
                     <option value="amount">Amount Awarded (Log Scale)</option>
                 </select>
+                
             </div>
             <div id = "info" class = "card">
                 <h1>Information</h1>
@@ -111,7 +112,8 @@
 
             const colorScale = d3.scaleOrdinal(d3.schemeSet1);
             let colorMode = 'direct sponsor';
-            const amountExtent = d3.extent(data, d => d['HURON Authorized Amount']);
+            const amountExtent = d3.extent(data, d => d['HURON Authorized Amount']); 
+
             const amountColorScale = d3.scaleSequentialLog(d3.interpolateViridis)
                 .domain([1, amountExtent[1]]);
 
@@ -190,13 +192,13 @@
                         }
                         else if (colorMode === 'awarded') {
                             console.log("awarded color mode");
-                            return +d['HURON Authorized Amount'] > 0 ? [0.0, 0.65, 0.0, 1.0] : [0.7, 0.0, 0.0, 1.0]; 
+                            return +d['HURON Authorized Amount'] > 0 ? [0.2, 0.65, 0.2, 1.0] : [0.65, 0.2, 0.2, 1.0]; 
                         }
                         else if (colorMode === 'amount') {
                             console.log("amount color mode");
                             const amount = +d['HURON Authorized Amount'];
                             if (amount <= 0) {
-                                return [0.5, 0.2, 1.0, 1.0]; 
+                                return [0.39, 0.39, 0.39, 0.5]; 
                             }
                             const logAmount = Math.log10(+d['HURON Authorized Amount']); 
                             const color = d3.color(amountColorScale(amount));
@@ -257,7 +259,7 @@
                         .attr("offset", d => d.offset)
                         .attr("stop-color", d => d.color);
                     legendSvg.append("rect").attr("width", 450).attr("height", 20).style("fill", "url(#linear-gradient)");
-                    legendSvg.append("text").attr("x", 0).attr("y", 35).text(d3.format("$,.0s")(amountExtent[0]));
+                    legendSvg.append("text").attr("x", 0).attr("y", 35).text(d3.format("$,.0s")(amountExtent[0]+1));
                     legendSvg.append("text").attr("x", 450).attr("y", 35).attr("text-anchor", "end").text(d3.format("$,.0s")(amountExtent[1]));
                 }
             }
@@ -286,16 +288,6 @@
             render();
 
         });
-
-
-
-
-        //color code: direct sponsor (NSF, NIH, DOE, etc.), awarded or not, amount awarded (logged)
-        //grants, pubs, authors, test for 3x the data and see if lag is bad
-        //department name? get from gates
-        //index.html - add transparent backing to co authorship network
-        //datashader
-        
     
     </script>
 
