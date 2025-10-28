@@ -65,13 +65,9 @@
     #color-mode-select {
         font-family: Jura;
     }
-    .active-highlight {
-        font-weight: bold;
-        font-size: 15px;
-        outline: 1px solid #757575;
-        outline-offset: 1px;
-        background-color: #f4f4f4;
-        border-radius: 1px;
+    .inactive-highlight {
+        text-decoration: line-through;
+        opacity: 0.5;
     }
 
 </style>
@@ -87,7 +83,9 @@
                     <option value="awarded">Awarded or Not</option>
                     <option value="amount">Amount Awarded</option>
                 </select>
-                
+                <label for="kde-toggle" style="margin-top: 10px; display: block;">
+                    <input type="checkbox" id="kde-toggle">Show Density Heatmap (KDE)
+                </label>"
             </div>
             <div id = "legend" class = "card">
                 <h1>Legend</h1>
@@ -145,6 +143,7 @@
             const amountExtent = d3.extent(data, d => d['HURON Authorized Amount']); 
             const amountColorScale = d3.scaleSequentialLog(d3.interpolateGnBu)
                 .domain([1, amountExtent[1]]);
+            
 
             let fillColor;
             let scatter;
@@ -185,8 +184,7 @@
                                 .select('path')
                                 .style('stroke', 'black')
                                 .style('stroke-opacity', 1);
-                            tooltip.style("opacity", 0.8);
-                            tooltip.style("opacity", 0.8);
+                            tooltip.style("opacity", 0.83);
 
                             const scatterContainer = document.getElementById('my_scatter');
                             const rect = scatterContainer.getBoundingClientRect();
@@ -287,6 +285,7 @@
                     .call(chart);
             };
 
+            // Event listeners for controls
             d3.select('#color-mode-select').on('change', (event) => {
                 colorMode = event.target.value;
                 console.log("Color mode changed to:", colorMode);
@@ -300,10 +299,16 @@
                 render();
             });
 
+            d3.select('#kde-toggle').on('change', function() {
+                showKDE = this.checked;
+                render();
+            });
+
             const zoom = fc.zoom().on('zoom', render);
 
             d3.select('#my_scatter').call(zoom, x, y);
-        
+            
+            // Initial rendering
             updateChart(data);
             updateLegend(data, colorMode, getSponsorCategory, colorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
             render();

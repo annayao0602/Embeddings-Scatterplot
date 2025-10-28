@@ -4,6 +4,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, colorScale, am
     const legend = legendContainer.append("div").attr("class", "legend-items");
 
     if (colorMode === 'direct sponsor') {
+        const noneSelected = highlightedCategories.length === 0;
         legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 17px;");
         const groupedCounts = d3.rollup(
             data,
@@ -22,12 +23,14 @@ export const updateLegend = (data, colorMode, getSponsorCategory, colorScale, am
             const color = colorScale(category);
 
             const itemDiv = legend.append("div")
-                .attr("class", `legend-item ${isActive ? 'active-highlight' : ''}`)
                 .style("display", "flex")
                 .style("align-items", "center")
                 .style("margin-bottom", "5px")
                 .style("cursor", "pointer")
                 .on("click", () => toggleCategoryHighlight(category));
+            if (!noneSelected) {
+                itemDiv.attr("class", `legend-item ${!isActive ? 'inactive-highlight' : ''}`)
+            }
 
             itemDiv.append("div").style("width", "10px").style("height", "10px").style("background-color", color).style("margin-right", "10px").style("opacity", "0.94");
             itemDiv.append("span").text(category);
