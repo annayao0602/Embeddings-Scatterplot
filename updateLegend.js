@@ -16,8 +16,19 @@ export const updateLegend = (data, colorMode, getSponsorCategory, colorScale, am
         
         sortedCategories.forEach(item => {
             const category = item.category;
+
+            const isActive = highlightedCategories.includes(category);
+            
             const color = colorScale(category);
-            const itemDiv = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
+
+            const itemDiv = legend.append("div")
+                .attr("class", `legend-item ${isActive ? 'active-highlight' : ''}`)
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("margin-bottom", "5px")
+                .style("cursor", "pointer")
+                .on("click", () => toggleCategoryHighlight(category));
+
             itemDiv.append("div").style("width", "10px").style("height", "10px").style("background-color", color).style("margin-right", "10px").style("opacity", "0.94");
             itemDiv.append("span").text(category);
         });

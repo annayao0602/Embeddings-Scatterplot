@@ -65,6 +65,14 @@
     #color-mode-select {
         font-family: Jura;
     }
+    .active-highlight {
+        font-weight: bold;
+        font-size: 15px;
+        outline: 1px solid #757575;
+        outline-offset: 1px;
+        background-color: #f4f4f4;
+        border-radius: 1px;
+    }
 
 </style>
 <body>
@@ -228,7 +236,6 @@
                     .value(d => {
                         if (colorMode === 'direct sponsor') {
                             const category = getSponsorCategory(d);
-            
                             const color = d3.color(colorScale(category));
                             return [color.r / 255, color.g / 255, color.b / 255, 0.94]; 
                         }
@@ -263,7 +270,6 @@
                         context.enable(context.BLEND);
                         context.blendFunc(context.SRC_ALPHA, context.ONE_MINUS_SRC_ALPHA);
                     })
-                .data(displayData);
                 
                 chart.webglPlotArea(scatter);
             }
@@ -298,7 +304,7 @@
 
             d3.select('#my_scatter').call(zoom, x, y);
         
-            updateChart();
+            updateChart(data);
             updateLegend(data, colorMode, getSponsorCategory, colorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
             render();
         });
