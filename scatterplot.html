@@ -102,6 +102,7 @@
     <script type = module>
 
         import { updateLegend } from './updateLegend.js';
+
         //----D3FC version with WebGL ----
         d3.text("proposals_with_embeddings_full_updated.json").then(function(text) {
             const lines = text.trim().split('\n');
@@ -148,6 +149,7 @@
             let fillColor;
             let scatter;
             let highlightedCategories = [];
+            let showKDE = false;
 
             const toggleCategoryHighlight = (category) => {
                 const index = highlightedCategories.indexOf(category);
@@ -221,6 +223,47 @@
                         });
                 });
             
+            const contourSeries = fc.seriesSvgPoint()
+                .xScale(x)
+                .yScale(y)
+                .crossValue(() => 0) // Dummy accessor, we are overriding this
+                .mainValue(() => 0)  // Dummy accessor
+                .decorate((selection, data) => { 
+                    
+                    // 'data' is the full 'contours' array from the .mapping
+                    // 'selection' is the D3 selection of <g> elements (one for each contour)
+
+                    if (!data || data.length === 0) {
+                        return; // No contours to draw
+                    }
+
+                    // Create the path generator once
+                    const pathGenerator = d3.geoPath();
+
+                    // Update the color scale's domain using the full 'data' array
+                    kdeColorScale.domain([0, d3.max(data, d => d.value)]);
+
+                    // Select the <path> inside EACH <g>
+                    selection.select('path')
+                        // 'd' here is the single contour object for each path
+                        .attr('d', d => pathGenerator(d)) 
+                        .attr('fill', d => kdeColorScale(d.value))
+                        .style('opacity', 0.5) // Semi-transparent
+                        .style('stroke', 'none');
+                });
+
+            // --- 3. ADDED: Multi-series for the SVG layer ---
+            const svgMultiSeries = fc.seriesSvgMulti()
+                .series([contourSeries, informationOverlay]) // Contours first (bottom), then tooltips
+                .mapping((data, index, series) => {
+                    // 'data' is the bundled object from render()
+                    switch (series) {
+                        case informationOverlay:
+                            return data.points; // Tooltips get point data
+                        case contourSeries:
+                            return data.contours; // KDE series gets contour data
+                    }
+                });
 
             const chart = fc
                 .chartCartesian(x, y)

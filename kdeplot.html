@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+
+<meta charset="utf-t">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<html>
+
+<head>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/d3fc"></script>
+    <title>KDE Plot</title>
+    <link href='https://fonts.googleapis.com/css?family=Jura' rel='stylesheet'>
+
+</head>
+<body>
+    <div id="chart-container"></div>
+</body>
+<script>
+    d3.text("proposals_with_embeddings_full_updated.json").then(function(text) {
+        const lines = text.trim().split('\n');
+
+        const data = lines.map(line => {
+            const {umap_x, umap_y } = JSON.parse(line);
+            return {umap_x: +umap_x, umap_y: +umap_y };
+        });
+
+        const width = 800;
+        const height = 600;
+
+        const marginTop = 20;
+        const marginRight = 30;
+        const marginBottom = 30;
+        const marginLeft = 40;
+
+        const x = d3.scaleLinear();
+        const y = d3.scaleLinear();
+
+        x.domain([0, 24]).nice().range([marginLeft, width - marginRight]);
+        y.domain([-5,15]).nice().range([height - marginBottom, marginTop]); 
+
+        const contours = d3.contourDensity()
+            .x(d => x(d.umap_x))
+            .y(d => y(d.umap_y))
+            .size([width, height])
+            .bandwidth(30)
+            .thresholds(30)
+            (data);
+    
+        const color = d3.scaleSequential()
+            .domain([0, d3.max(contours, d => d.value)])
+            .interpolator(d3.interpolateBlues); 
+
+        const svg = d3.create("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .attr("viewBox", [0, 0, width, height])
+            .attr("style", "max-width: 100%; height: auto;");
+        
+        svg.append("g")
+            .attr("transform", `translate(0,${height - marginBottom})`)
+            .call(d3.axisBottom(x).tickSizeOuter(0))
+            .call(g => g.select(".domain").remove())
+            .call(g => g.select(".tick:last-of-type text").clone()
+                .attr("y", -3)
+                .attr("dy", null)
+                .attr("font-weight", "bold"));
+        
+        svg.append("g")
+            .attr("transform", `translate(${marginLeft},0)`)
+            .call(d3.axisLeft(y).tickSizeOuter(0))
+            .call(g => g.select(".domain").remove())
+            .call(g => g.select(".tick:last-of-type text").clone()
+                .attr("x", 3));
+                
+        svg.append("g")
+            .attr("stroke", "#fff")     
+            .attr("stroke-width", 0.5) // 
+            .attr("stroke-linejoin", "round")
+            .selectAll()
+            .data(contours)
+            .join("path")
+            .attr("fill", d => color(d.value)) 
+            .attr("d", d3.geoPath());
+        
+        
+        d3.select("#chart-container").append(() => svg.node());
+        
+    });
+</script>
+</html>
