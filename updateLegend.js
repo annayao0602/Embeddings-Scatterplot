@@ -1,11 +1,11 @@
-export const updateLegend = (data, colorMode, getSponsorCategory, colorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight) => {
+export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight) => {
     const legendContainer = d3.select("#legend");
     legendContainer.select(".legend-items").remove();
     const legend = legendContainer.append("div").attr("class", "legend-items");
 
     if (colorMode === 'direct sponsor') {
         const noneSelected = highlightedCategories.length === 0;
-        legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 17px;");
+        legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const groupedCounts = d3.rollup(
             data,
             v => v.length, 
@@ -14,6 +14,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, colorScale, am
 
         const sortedCategories = Array.from(groupedCounts, ([category, count]) => ({ category, count }))
             .sort((a, b) => b.count - a.count);
+        console.log(sortedCategories);
         
         sortedCategories.forEach(item => {
             const category = item.category;
@@ -32,21 +33,42 @@ export const updateLegend = (data, colorMode, getSponsorCategory, colorScale, am
                 itemDiv.attr("class", `legend-item ${!isActive ? 'inactive-highlight' : ''}`)
             }
 
-            itemDiv.append("div").style("width", "10px").style("height", "10px").style("background-color", color).style("margin-right", "10px").style("opacity", "0.94");
-            itemDiv.append("span").text(category);
+            itemDiv.append("div").style("width", "12px").style("height", "12px").style("background-color", color).style("margin-right", "10px").style("opacity", "0.94");
+            itemDiv.append("span").text(category).style("font-size", "15px");
         });
     }
     else if (colorMode === 'awarded') {
-        const awardedItem = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
-        awardedItem.append("div").style("width", "10px").style("height", "10px").style("background-color", 'rgb(25, 153, 229)').style("margin-right", "10px");
+        /*const awardedItem = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
+        awardedItem.append("div").style("width", "12px").style("height", "12px").style("background-color", 'rgb(25, 153, 229)').style("margin-right", "10px");
         awardedItem.append("span").text('Awarded');
 
         const notAwardedItem = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
-        notAwardedItem.append("div").style("width", "10px").style("height", "10px").style("background-color", 'rgb(153, 115, 76)').style("margin-right", "10px");
-        notAwardedItem.append("span").text('Not Awarded');
-    }
+        notAwardedItem.append("div").style("width", "12px").style("height", "12px").style("background-color", 'rgb(153, 115, 76)').style("margin-right", "10px");
+        notAwardedItem.append("span").text('Not Awarded'); */
+        const oneSelected = highlightedCategories.length === 1;
+        legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
+        const awardCategory = d3.rollup(data, v => v.length, getAwardedStatus);
+        const sortedAwardCategory = Array.from(awardCategory, ([category, count]) => [category, count]).sort((a,b) => b.count - a.count);
+        console.log(sortedAwardCategory);
+
+        sortedAwardCategory.forEach(item => {
+            const category = item[0];
+            const awardActive = highlightedCategories.includes(category);
+            const itemDiv = legend.append("div")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("margin-bottom", "5px")
+                .style("cursor", "pointer")
+                .on("click", () => toggleCategoryHighlight(category));
+            if (oneSelected) {
+                itemDiv.attr("class", `legend-item ${!awardActive ? 'inactive-highlight' : ''}`)
+            }
+            itemDiv.append("div").style("width", "12px").style("height", "12px").style("background-color", category === "Awarded" ? 'rgb(25, 153, 229)' : 'rgb(153, 115, 76)').style("margin-right", "10px").style("opacity", "0.94");
+            itemDiv.append("span").text(category).style("font-size", "15px");
+            });
+        }
     else if (colorMode === 'amount') {
-        legend.append("h3").text("Logged Amount").attr("style", "font-size: 17px; margin-bottom: 5px;");
+        legend.append("h3").text("Logged Amount").attr("style", "font-size: 14px; margin-bottom: 5px;");
         const legendSvg = legend.append("svg").attr("width", 550).attr("height", 50);
         const defs = legendSvg.append("defs");
         

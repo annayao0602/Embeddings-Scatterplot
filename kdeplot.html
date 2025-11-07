@@ -42,7 +42,7 @@
             .x(d => x(d.umap_x))
             .y(d => y(d.umap_y))
             .size([width, height])
-            .bandwidth(30)
+            .bandwidth(20)
             .thresholds(30)
             (data);
     
@@ -74,7 +74,7 @@
                 
         svg.append("g")
             .attr("stroke", "#fff")     
-            .attr("stroke-width", 0.5) // 
+            .attr("stroke-width", 0.5)  
             .attr("stroke-linejoin", "round")
             .selectAll()
             .data(contours)
