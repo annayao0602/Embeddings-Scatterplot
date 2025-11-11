@@ -14,6 +14,15 @@
 
 </head>
 <style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; 
+        font-family: 'Jura', sans-serif;
+        background-color: #f9f9f9;
+        font-size: 14px;
+    }
     .header {
         width: 100%;
         padding: 10px;
@@ -37,25 +46,11 @@
         bottom: 10px;
         right: 100px;
         font-size: 12px;
-        font-family: Jura;
+        font-family: 'Jura';
     }
     #chart-container {
         width: 60%;
         height: 90%;
-    }
-    .tooltip {	
-        position: absolute;			
-        text-align: left;			
-        width: 250px;					
-        height: auto;					
-        padding: 10px;				
-        font: 12px 'Jura', sans-serif;		
-        background: white;	
-        border: 1px solid #ccc;		
-        border-radius: 8px;			
-        pointer-events: none;			
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        opacity: 0;
     }
     .card {
         padding: 10px;
@@ -78,10 +73,20 @@
         padding: 10px;
         box-sizing: border-box;
     }
+    #kde-metric {
+        font-family: 'Jura';
+    }
+    #controls p {
+        font-size: 14px;
+        font-family: 'Jura';
+    }
+    #controls {
+        font-family: 'Jura';
+    }
 </style>
 <body>
     <div class = "header">
-        <h1>UVA Research Insights</h1>
+        <h1>UVA Research Insights KDE Plot</h1>
     </div>
     <div id = "logo">
         <img src="cdh.png" alt="CDH Logo" width="70px" height="80px">
@@ -95,8 +100,19 @@
             <div id = "controls" class = "card">
                 <h1>Controls</h1>
                 <p>Move the sliding bar to toggle bandwidth. Change the dropdown menu to visualize different metrics.</p>
+                <br>
+                <div id = "options">
+                    <div id = "kde-metric">
+                        <label for="kde-metric">Metric:</label>
+                        <select id="kde-metric">
+                            <option value="density" selected>Density of proposals</option>
+                            <option value="hit_rate">Hit rate of proposals awarded</option>
+                        </select>
+                    </div>
+                </div>
+                <br>
+                <p>Bandwidth: </p>
                 <div id = "slider"></div>
-            </div>
         </div>
 </body>
 <script>
@@ -104,8 +120,8 @@
         const lines = text.trim().split('\n');
 
         const data = lines.map(line => {
-            const {umap_x, umap_y } = JSON.parse(line);
-            return {umap_x: +umap_x, umap_y: +umap_y };
+            const {umap_x, umap_y, HURONAuthorizedAmount} = JSON.parse(line);
+            return {umap_x: +umap_x, umap_y: +umap_y, HURONAuthorizedAmount: +HURONAuthorizedAmount ?? 0};
         });
 
         const width = 800;
@@ -204,7 +220,10 @@
 
         slider_svg.call(slider);
         
-        
+        d3.select("#kde-metric").on("change", function() {
+            const selected_metric = this.value;
+            // TODO: update after hexbins are done
+        })
         d3.select("#chart-container").append(() => svg.node());
         
     });

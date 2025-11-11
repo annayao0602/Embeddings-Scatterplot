@@ -5,7 +5,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
 
     if (colorMode === 'direct sponsor') {
         const noneSelected = highlightedCategories.length === 0;
-        legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
+        legend.append("p").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const groupedCounts = d3.rollup(
             data,
             v => v.length, 
