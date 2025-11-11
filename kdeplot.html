@@ -9,6 +9,7 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/d3fc"></script>
     <script src="https://unpkg.com/d3-simple-slider"></script>
+    <script src="https://d3js.org/d3-hexbin.v0.2.min.js"></script>
     <title>KDE Plot</title>
     <link href='https://fonts.googleapis.com/css?family=Jura' rel='stylesheet'>
 
@@ -99,10 +100,10 @@
         <div id = "panel">
             <div id = "controls" class = "card">
                 <h1>Controls</h1>
-                <p>Move the sliding bar to toggle bandwidth. Change the dropdown menu to visualize different metrics.</p>
+                <p>Move the sliding bar to toggle KDE bandwidth or hexbin radius. Change the dropdown menu to visualize different metrics.</p>
                 <br>
                 <div id = "options">
-                    <div id = "kde-metric">
+                    <div id = "kde-metric-container">
                         <label for="kde-metric">Metric:</label>
                         <select id="kde-metric">
                             <option value="density" selected>Density of proposals</option>
@@ -111,7 +112,6 @@
                     </div>
                 </div>
                 <br>
-                <p>Bandwidth: </p>
                 <div id = "slider"></div>
         </div>
 </body>
@@ -120,9 +120,11 @@
         const lines = text.trim().split('\n');
 
         const data = lines.map(line => {
-            const {umap_x, umap_y, HURONAuthorizedAmount} = JSON.parse(line);
-            return {umap_x: +umap_x, umap_y: +umap_y, HURONAuthorizedAmount: +HURONAuthorizedAmount ?? 0};
+            const {umap_x, umap_y, 'HURON Authorized Amount' : HURONAuthorizedAmount} = JSON.parse(line);
+            return {umap_x: +umap_x, umap_y: +umap_y, 'HURON Authorized Amount' : +HURONAuthorizedAmount ?? 0};
         });
+        console.log(data);
+
 
         const width = 800;
         const height = 600;
@@ -134,98 +136,175 @@
 
         const x = d3.scaleLinear();
         const y = d3.scaleLinear();
+
+
+        const selected_metric = d3.select("#kde-metric").property("value");
+
         const bandwidths = [15, 20, 25, 30, 35, 40];
         const thresholds = [5, 10, 15, 20, 25, 30];
+        const radius = [5, 10, 15, 20, 25, 30];
 
         x.domain([0, 24]).nice().range([marginLeft, width - marginRight]);
         y.domain([-5,15]).nice().range([height - marginBottom, marginTop]); 
 
-        let contours = d3.contourDensity()
-            .x(d => x(d.umap_x))
-            .y(d => y(d.umap_y))
-            .size([width, height])
-            .bandwidth(20)
-            .thresholds(15)
-            (data);
-    
-        const color = d3.scaleSequential()
-            .domain([0, d3.max(contours, d => d.value)])
-            .interpolator(d3.interpolateBlues); 
 
-        const svg = d3.create("svg")
-            .attr("width", width)
-            .attr("height", height)
-            .attr("viewBox", [0, 0, width, height])
-            .attr("style", "max-width: 100%; height: auto;");
-        
-        svg.append("g")
-            .attr("transform", `translate(0,${height - marginBottom})`)
-            .call(d3.axisBottom(x).tickSizeOuter(0))
-            .call(g => g.select(".domain").remove())
-            .call(g => g.select(".tick:last-of-type text").clone()
-                .attr("y", -3)
-                .attr("dy", null)
-                .attr("font-weight", "bold"));
-        
-        svg.append("g")
-            .attr("transform", `translate(${marginLeft},0)`)
-            .call(d3.axisLeft(y).tickSizeOuter(0))
-            .call(g => g.select(".domain").remove())
-            .call(g => g.select(".tick:last-of-type text").clone()
-                .attr("x", 3));
-                
-        svg.append("g")
-            .attr("stroke", "#fff")     
-            .attr("stroke-width", 0.5)  
-            .attr("stroke-linejoin", "round")
-            .selectAll()
-            .data(contours)
-            .join("path")
-            .attr("fill", d => color(d.value)) 
-            .attr("d", d3.geoPath());
-        
-        const update_bandwidth = (bandwidth) => {
-            const new_contours = d3.contourDensity()
-                .x(d => x(d.umap_x))
-                .y(d => y(d.umap_y))
-                .size([width, height])
-                .bandwidth(bandwidth)
-                .thresholds(15)
-                (data);
+        function drawChart(selected_metric) {
+            d3.select("#chart-container").selectAll("*").remove();
+            d3.select("#slider").selectAll("*").remove();
+
+            let svg = d3.create("svg")
+                .attr("width", width)
+                .attr("height", height)
+                .attr("viewBox", [0, 0, width, height])
+                .attr("style", "max-width: 100%; height: auto;");
+
+            svg.append("g")
+                .attr("transform", `translate(0,${height - marginBottom})`)
+                .call(d3.axisBottom(x).tickSizeOuter(0))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.select(".tick:last-of-type text").clone()
+                    .attr("y", -3)
+                    .attr("dy", null)
+                    .attr("font-weight", "bold"));
             
-            svg.selectAll("path")
-                .data(new_contours)
-                .join("path")
-                .attr("fill", d => color(d.value)) 
-                .attr("d", d3.geoPath());
-            console.log("Updated bandwidth:", bandwidth);
-        };
-        
+            svg.append("g")
+                .attr("transform", `translate(${marginLeft},0)`)
+                .call(d3.axisLeft(y).tickSizeOuter(0))
+                .call(g => g.select(".domain").remove())
+                .call(g => g.select(".tick:last-of-type text").clone()
+                    .attr("x", 3));
 
-        const slider = d3.sliderHorizontal()
-            .min(15)
-            .max(40)
-            .step(1)
-            .tickValues(bandwidths)
-            .width(300)
-            .value(20)
-            .on('onchange', val => update_bandwidth(val));
+            let slider_svg = d3.select('#slider')
+                    .append('svg')
+                    .attr('width', 400)
+                    .attr('height', 100)
+                    .append('g')
+                    .attr('transform', 'translate(30,30)');
 
-        const slider_svg = d3.select('#slider')
-            .append('svg')
-            .attr('width', 400)
-            .attr('height', 100)
-            .append('g')
-            .attr('transform', 'translate(30,30)');
 
-        slider_svg.call(slider);
+            if(selected_metric == "density") {
+
+                let contours = d3.contourDensity()
+                    .x(d => x(d.umap_x))
+                    .y(d => y(d.umap_y))
+                    .size([width, height])
+                    .bandwidth(20)
+                    .thresholds(15)
+                    (data);
+            
+                const color = d3.scaleSequential()
+                    .domain([0, d3.max(contours, d => d.value)])
+                    .interpolator(d3.interpolateBlues); 
+    
+                svg.append("g")
+                    .attr("stroke", "#fff")     
+                    .attr("stroke-width", 0.5)  
+                    .attr("stroke-linejoin", "round")
+                    .selectAll()
+                    .data(contours)
+                    .join("path")
+                    .attr("fill", d => color(d.value)) 
+                    .attr("d", d3.geoPath());
+                
+                const update_bandwidth = (bandwidth) => {
+                    const new_contours = d3.contourDensity()
+                        .x(d => x(d.umap_x))
+                        .y(d => y(d.umap_y))
+                        .size([width, height])
+                        .bandwidth(bandwidth)
+                        .thresholds(15)
+                        (data);
+                    
+                    svg.selectAll("path")
+                        .data(new_contours)
+                        .join("path")
+                        .attr("fill", d => color(d.value)) 
+                        .attr("d", d3.geoPath());
+                };
+                const slider = d3.sliderHorizontal()
+                    .min(15)
+                    .max(40)
+                    .step(1)
+                    .tickValues(bandwidths)
+                    .width(300)
+                    .value(20)
+                    .on('onchange', val => update_bandwidth(val));
+
+                slider_svg.call(slider);
+            }
+            else if (selected_metric == "hit_rate") {
+                let hexbin = d3.hexbin()
+                    .x(d => x(d.umap_x))
+                    .y(d => y(d.umap_y))
+                    .radius(20)
+                    .extent([[marginLeft, marginTop], [width - marginRight, height - marginBottom]]);
+
+                let bins = hexbin(data);
+                function compute_hit_rate(bin) {
+                    const total = bin.length;
+                    const awarded = bin.filter(d => d['HURON Authorized Amount'] > 0).length;
+                    return (total === 0) ? 0 : awarded / total;
+                }
+                for (const bin of bins) {
+                    bin.hit_rate = compute_hit_rate(bin);
+                }
+                const hitRateColor = d3.scaleSequential()
+                    .domain([0, 1])
+                    .interpolator(d3.interpolateBlues);
+
+                const hexGroup = svg.append("g")
+                    .attr("class", "hexagon-group") 
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 0.5);
+
+                hexGroup.selectAll("path")
+                    .data(bins)
+                    .join("path")
+                        .attr("d", hexbin.hexagon())
+                        .attr("transform", d => `translate(${d.x},${d.y})`)
+                        .attr("fill", d => hitRateColor(d.hit_rate));
+
+                const update_radius = (radius) => {
+                    const new_hexbin = d3.hexbin()
+                        .x(d => x(d.umap_x))
+                        .y(d => y(d.umap_y))
+                        .radius(radius)
+                        .extent([[marginLeft, marginTop], [width - marginRight, height - marginBottom]]);
+                    
+                    const new_bins = new_hexbin(data);
+
+                    for (const bin of new_bins) {
+                        bin.hit_rate = compute_hit_rate(bin);
+                    }   
+
+                    hexGroup.selectAll("path")
+                        .data(new_bins) 
+                        .join("path")   
+                            .attr("d", new_hexbin.hexagon()) 
+                            .attr("transform", d => `translate(${d.x},${d.y})`)
+                            .attr("fill", d => hitRateColor(d.hit_rate));
+                }
+                    
+                const slider_hex = d3.sliderHorizontal()
+                    .min(5)
+                    .max(30)
+                    .step(1)
+                    .tickValues(radius)
+                    .width(300)
+                    .value(20)
+                    .on('onchange', val => update_radius(val));
+
+                slider_svg.call(slider_hex);
+            }
+            d3.select("#chart-container").append(() => svg.node());
+        }
+
         
         d3.select("#kde-metric").on("change", function() {
-            const selected_metric = this.value;
-            // TODO: update after hexbins are done
+            drawChart(this.value);
         })
-        d3.select("#chart-container").append(() => svg.node());
-        
+        const initial_metric = d3.select("#kde-metric").property("value");
+        drawChart(initial_metric);
     });
 </script>
 </html>
