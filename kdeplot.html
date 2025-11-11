@@ -8,12 +8,96 @@
 <head>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://unpkg.com/d3fc"></script>
+    <script src="https://unpkg.com/d3-simple-slider"></script>
     <title>KDE Plot</title>
     <link href='https://fonts.googleapis.com/css?family=Jura' rel='stylesheet'>
 
 </head>
+<style>
+    .header {
+        width: 100%;
+        padding: 10px;
+        background-color: #ffffff;
+        box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 4px 10px 0 rgba(0, 0, 0, 0.19);
+        margin-bottom: 20px;
+    }
+    .header h1 {
+        margin: 0;
+        font-family: 'Jura', sans-serif;
+        font-size: 28px;
+        text-align: center;
+    }
+    #logo {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+    }
+    #attributions {
+        position: absolute;
+        bottom: 10px;
+        right: 100px;
+        font-size: 12px;
+        font-family: Jura;
+    }
+    #chart-container {
+        width: 60%;
+        height: 90%;
+    }
+    .tooltip {	
+        position: absolute;			
+        text-align: left;			
+        width: 250px;					
+        height: auto;					
+        padding: 10px;				
+        font: 12px 'Jura', sans-serif;		
+        background: white;	
+        border: 1px solid #ccc;		
+        border-radius: 8px;			
+        pointer-events: none;			
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        opacity: 0;
+    }
+    .card {
+        padding: 10px;
+        min-height:0;
+        width: 100%;
+        font-family: Jura;
+        border-radius: 15px;
+    }
+    .container {
+        display: flex;
+        height: 100vh;
+        width: 100vw;
+    }
+    #panel {
+        width: 40%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+</style>
 <body>
-    <div id="chart-container"></div>
+    <div class = "header">
+        <h1>UVA Research Insights</h1>
+    </div>
+    <div id = "logo">
+        <img src="cdh.png" alt="CDH Logo" width="70px" height="80px">
+    </div>
+    <div id = "attributions">
+        <p>Data Design by Anna Yao, Data Processing by Shen Qianyi, Created under Alex Gates</p>
+    </div>
+    <div class = "container">
+        <div id="chart-container"></div>
+        <div id = "panel">
+            <div id = "controls" class = "card">
+                <h1>Controls</h1>
+                <p>Move the sliding bar to toggle bandwidth. Change the dropdown menu to visualize different metrics.</p>
+                <div id = "slider"></div>
+            </div>
+        </div>
 </body>
 <script>
     d3.text("proposals_with_embeddings_full_updated.json").then(function(text) {
@@ -34,16 +118,18 @@
 
         const x = d3.scaleLinear();
         const y = d3.scaleLinear();
+        const bandwidths = [15, 20, 25, 30, 35, 40];
+        const thresholds = [5, 10, 15, 20, 25, 30];
 
         x.domain([0, 24]).nice().range([marginLeft, width - marginRight]);
         y.domain([-5,15]).nice().range([height - marginBottom, marginTop]); 
 
-        const contours = d3.contourDensity()
+        let contours = d3.contourDensity()
             .x(d => x(d.umap_x))
             .y(d => y(d.umap_y))
             .size([width, height])
             .bandwidth(20)
-            .thresholds(30)
+            .thresholds(15)
             (data);
     
         const color = d3.scaleSequential()
@@ -81,6 +167,42 @@
             .join("path")
             .attr("fill", d => color(d.value)) 
             .attr("d", d3.geoPath());
+        
+        const update_bandwidth = (bandwidth) => {
+            const new_contours = d3.contourDensity()
+                .x(d => x(d.umap_x))
+                .y(d => y(d.umap_y))
+                .size([width, height])
+                .bandwidth(bandwidth)
+                .thresholds(15)
+                (data);
+            
+            svg.selectAll("path")
+                .data(new_contours)
+                .join("path")
+                .attr("fill", d => color(d.value)) 
+                .attr("d", d3.geoPath());
+            console.log("Updated bandwidth:", bandwidth);
+        };
+        
+
+        const slider = d3.sliderHorizontal()
+            .min(15)
+            .max(40)
+            .step(1)
+            .tickValues(bandwidths)
+            .width(300)
+            .value(20)
+            .on('onchange', val => update_bandwidth(val));
+
+        const slider_svg = d3.select('#slider')
+            .append('svg')
+            .attr('width', 400)
+            .attr('height', 100)
+            .append('g')
+            .attr('transform', 'translate(30,30)');
+
+        slider_svg.call(slider);
         
         
         d3.select("#chart-container").append(() => svg.node());
