@@ -54,9 +54,10 @@
         height: 90%;
     }
     .card {
-        padding: 10px;
+        padding: 0px;
         min-height:0;
         width: 100%;
+        font-size: 16px;
         font-family: Jura;
         border-radius: 15px;
     }
@@ -75,19 +76,34 @@
         box-sizing: border-box;
     }
     #kde-metric {
+        font-size: 14px;
         font-family: 'Jura';
     }
     #controls p {
-        font-size: 14px;
+        font-size: 16px;
         font-family: 'Jura';
     }
     #controls {
         font-family: 'Jura';
     }
+    #scatterplot-button {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+    }
+    #scatterplot-button:hover {
+        scale: 1.1
+    }
+   
 </style>
 <body>
     <div class = "header">
         <h1>UVA Research Insights KDE Plot</h1>
+    </div>
+    <div id = 'scatterplot-button'>
+        <a href = "scatterplot.html">
+            <img src = "scatterplot.png" width = 93px height = 35px>
+        </a>
     </div>
     <div id = "logo">
         <img src="cdh.png" alt="CDH Logo" width="70px" height="80px">
@@ -101,6 +117,7 @@
             <div id = "controls" class = "card">
                 <h1>Controls</h1>
                 <p>Move the sliding bar to toggle KDE bandwidth or hexbin radius. Change the dropdown menu to visualize different metrics.</p>
+                <p id = "metric-description"></p>
                 <br>
                 <div id = "options">
                     <div id = "kde-metric-container">
@@ -112,7 +129,10 @@
                     </div>
                 </div>
                 <br>
-                <div id = "slider"></div>
+                <div id = "slider-container">
+                    <p id = "slider-text"></p>
+                    <div id = "slider"></div>
+                </div>
         </div>
 </body>
 <script>
@@ -140,12 +160,15 @@
 
         const selected_metric = d3.select("#kde-metric").property("value");
 
-        const bandwidths = [15, 20, 25, 30, 35, 40];
+        const bandwidths = [15, 20, 25, 30, 35];
         const thresholds = [5, 10, 15, 20, 25, 30];
         const radius = [5, 10, 15, 20, 25, 30];
 
         x.domain([0, 24]).nice().range([marginLeft, width - marginRight]);
         y.domain([-5,15]).nice().range([height - marginBottom, marginTop]); 
+
+        const sliderText = d3.select("#slider-text");
+        const metricDescription = d3.select("#metric-description");
 
 
         function drawChart(selected_metric) {
@@ -183,6 +206,8 @@
 
 
             if(selected_metric == "density") {
+                sliderText.text("KDE Bandwidth:");
+                metricDescription.text("The KDE plot visualizes the density of proposals in the space. The darker areas indicate a higher concentration of proposals, while lighter areas indicate a lower concentration. Adjusting the bandwidth will change the smoothness of the density estimation.");
 
                 let contours = d3.contourDensity()
                     .x(d => x(d.umap_x))
@@ -223,7 +248,7 @@
                 };
                 const slider = d3.sliderHorizontal()
                     .min(15)
-                    .max(40)
+                    .max(35)
                     .step(1)
                     .tickValues(bandwidths)
                     .width(300)
@@ -233,10 +258,13 @@
                 slider_svg.call(slider);
             }
             else if (selected_metric == "hit_rate") {
+                sliderText.text("Hexbin Radius:");
+                metricDescription.text("The hexbin plot visualizes the hit rate, or percent of proposals awarded in each hexagon space. Each hexagon's color intensity represents the hit rate, with darker colors indicating a higher hit rate (more awarded proposals). Adjusting the radius will change the size of the hexagons, affecting how many proposals are aggregated into each hexagon.");
+
                 let hexbin = d3.hexbin()
                     .x(d => x(d.umap_x))
                     .y(d => y(d.umap_y))
-                    .radius(20)
+                    .radius(15)
                     .extent([[marginLeft, marginTop], [width - marginRight, height - marginBottom]]);
 
                 let bins = hexbin(data);
@@ -291,7 +319,7 @@
                     .step(1)
                     .tickValues(radius)
                     .width(300)
-                    .value(20)
+                    .value(15)
                     .on('onchange', val => update_radius(val));
 
                 slider_svg.call(slider_hex);
