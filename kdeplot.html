@@ -75,6 +75,20 @@
         padding: 10px;
         box-sizing: border-box;
     }
+    .tooltip {	
+        position: absolute;			
+        text-align: left;			
+        width: auto;					
+        height: auto;					
+        padding: 10px;				
+        font: 12px 'Jura', sans-serif;		
+        background: white;	
+        border: 1px solid #ccc;		
+        border-radius: 8px;		
+        pointer-events: none;	
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        opacity: 0;
+    }
     #kde-metric {
         font-size: 14px;
         font-family: 'Jura';
@@ -160,7 +174,7 @@
 
         const selected_metric = d3.select("#kde-metric").property("value");
 
-        const bandwidths = [15, 20, 25, 30, 35];
+        const bandwidths = [10, 15, 20, 25, 30, 35];
         const thresholds = [5, 10, 15, 20, 25, 30];
         const radius = [5, 10, 15, 20, 25, 30];
 
@@ -170,6 +184,7 @@
         const sliderText = d3.select("#slider-text");
         const metricDescription = d3.select("#metric-description");
 
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
         function drawChart(selected_metric) {
             d3.select("#chart-container").selectAll("*").remove();
@@ -247,7 +262,7 @@
                         .attr("d", d3.geoPath());
                 };
                 const slider = d3.sliderHorizontal()
-                    .min(15)
+                    .min(10)
                     .max(35)
                     .step(1)
                     .tickValues(bandwidths)
@@ -259,7 +274,7 @@
             }
             else if (selected_metric == "hit_rate") {
                 sliderText.text("Hexbin Radius:");
-                metricDescription.text("The hexbin plot visualizes the hit rate, or percent of proposals awarded in each hexagon space. Each hexagon's color intensity represents the hit rate, with darker colors indicating a higher hit rate (more awarded proposals). Adjusting the radius will change the size of the hexagons, affecting how many proposals are aggregated into each hexagon.");
+                metricDescription.text("The hexbin plot visualizes the hit rate, or percent of proposals awarded in each hexagon space. Each hexagon's color intensity represents the hit rate, with darker colors indicating a higher hit rate (more awarded proposals). Adjusting the radius will change the size of the hexagons, affecting how many proposals are aggregated into each hexagon. Hover over each hexagon to see the hit rate, total proposals, and awarded proposals.");
 
                 let hexbin = d3.hexbin()
                     .x(d => x(d.umap_x))
@@ -290,7 +305,24 @@
                     .join("path")
                         .attr("d", hexbin.hexagon())
                         .attr("transform", d => `translate(${d.x},${d.y})`)
-                        .attr("fill", d => hitRateColor(d.hit_rate));
+                        .attr("fill", d => hitRateColor(d.hit_rate))
+                        .on("mouseover", (event, d) => {
+                            tooltip.transition()
+                                .duration(100)
+                                .style("opacity", 0.9);
+                            tooltip.html(`Hit Rate: ${(d.hit_rate * 100).toFixed(2)}%<br>Total Proposals: ${d.length}<br>Awarded Proposals: ${d.filter(p => p['HURON Authorized Amount'] > 0).length}`)
+                                .style("left", (event.pageX + 10) + "px")
+                                .style("top", (event.pageY - 20) + "px");
+                            hexGroup.selectAll("path")
+                                .attr("stroke", d2 => (d2 === d) ? "#000" : "#fff")
+                                .style("cursor", d2 => (d2 === d) ? "pointer" : "default")
+                                .attr("stroke-width", d2 => (d2 === d) ? 1 : 0.5);
+                        })
+                        .on("mouseout", () => {
+                            tooltip.transition()
+                                .duration(300)
+                                .style("opacity", 0);
+                        });
 
                 const update_radius = (radius) => {
                     const new_hexbin = d3.hexbin()
@@ -310,7 +342,24 @@
                         .join("path")   
                             .attr("d", new_hexbin.hexagon()) 
                             .attr("transform", d => `translate(${d.x},${d.y})`)
-                            .attr("fill", d => hitRateColor(d.hit_rate));
+                            .attr("fill", d => hitRateColor(d.hit_rate))
+                            .on("mouseover", (event, d) => {
+                            tooltip.transition()
+                                .duration(100)
+                                .style("opacity", 0.9);
+                            tooltip.html(`Hit Rate: ${(d.hit_rate * 100).toFixed(2)}%<br>Total Proposals: ${d.length}<br>Awarded Proposals: ${d.filter(p => p['HURON Authorized Amount'] > 0).length}`)
+                                .style("left", (event.pageX + 10) + "px")
+                                .style("top", (event.pageY - 20) + "px");
+                            hexGroup.selectAll("path")
+                                .attr("stroke", d2 => (d2 === d) ? "#000" : "#fff")
+                                .style("cursor", d2 => (d2 === d) ? "pointer" : "default")
+                                .attr("stroke-width", d2 => (d2 === d) ? 1 : 0.5);
+                        })
+                        .on("mouseout", () => {
+                            tooltip.transition()
+                                .duration(300)
+                                .style("opacity", 0);
+                        });
                 }
                     
                 const slider_hex = d3.sliderHorizontal()
