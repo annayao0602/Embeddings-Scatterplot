@@ -23,13 +23,9 @@
         font-family: 'Inria Serif', sans-serif;
         background-color: #f9f9f9;
         font-size: 14px;
+        color:#002E63;
     }
-    .header {
-        width: 100%;
-        padding: 10px;
-        margin-bottom: 20px;
-    }
-    .header h1 {
+    .header p {
         font-family: 'Inria Serif', sans-serif;
         font-size: 28px;
         color: #002E63;
@@ -44,7 +40,6 @@
         width: 100%;
         font-size: 16px;
         font-family: 'Inria Serif';
-        border-radius: 15px;
     }
     .container {
         display: flex;
@@ -77,6 +72,8 @@
     #kde-metric {
         font-size: 14px;
         font-family: 'Inria Serif';
+        color:#002E63;
+
     }
     #controls p {
         font-size: 16px;
@@ -86,7 +83,19 @@
         font-family: 'Inria Serif';
     }
     #scatterplot-button:hover {
-        scale: 1.1
+        scale: 1.1;
+        background-color: #d6d6d6;
+        transition: background-color 0.3s ease-in-out;
+    }
+    #about-button:hover {
+        scale: 1.1;
+        background-color: #d6d6d6;
+        transition: background-color 0.3s ease-in-out;
+    }
+    #kdeplot-button:hover {
+        scale: 1.1;
+        background-color: #d6d6d6;
+        transition: background-color 0.3s ease-in-out;
     }
     #header-container {
         display: flex;
@@ -97,8 +106,13 @@
     #outer-header-container {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         padding: 20px;
+        margin-right: 20px;
+    }
+    #buttons {
+        display: flex;
+        gap: 40px;
     }
    
 </style>
@@ -112,10 +126,22 @@
                 <h1>uva research insights scatterplot</h1>
             </div>
         </div>
-        <div id = 'scatterplot-button'>
-            <a href = "scatterplot.html">
-                <p>scatterplot</p>
-            </a>
+        <div id = 'buttons'>
+            <div id = 'kdeplot-button'>
+                <a href = "kdeplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
+                    <p>kde plot</p>
+                </a>
+            </div>
+            <div id = 'scatterplot-button'>
+                <a href = "scatterplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
+                    <p>scatterplot</p>
+                </a>
+            </div>
+            <div id = 'about-button'>
+                <a href = "about.html" style="text-decoration: none; color: #002E63; font-size: 18px">
+                    <p>about</p>
+                </a>
+            </div>
         </div>
     </div>
     
@@ -123,16 +149,16 @@
         <div id="chart-container"></div>
         <div id = "panel">
             <div id = "controls" class = "card">
-                <h1>Controls</h1>
-                <p>Move the sliding bar to toggle KDE bandwidth or hexbin radius. Change the dropdown menu to visualize different metrics.</p>
+                <h2>controls</h2>
+                <p>move the sliding bar to toggle kde bandwidth or hexbin radius. change the dropdown menu to visualize different metrics.</p>
                 <p id = "metric-description"></p>
                 <br>
                 <div id = "options">
                     <div id = "kde-metric-container">
-                        <label for="kde-metric">Metric:</label>
+                        <label for="kde-metric">metric:</label>
                         <select id="kde-metric">
-                            <option value="density" selected>Density of proposals</option>
-                            <option value="hit_rate">Hit rate of proposals awarded</option>
+                            <option value="density" selected>density of proposals</option>
+                            <option value="hit_rate">hit rate of proposals awarded</option>
                         </select>
                     </div>
                 </div>
@@ -215,8 +241,8 @@
 
 
             if(selected_metric == "density") {
-                sliderText.text("KDE Bandwidth:");
-                metricDescription.text("The KDE plot visualizes the density of proposals in the space. The darker areas indicate a higher concentration of proposals, while lighter areas indicate a lower concentration. Adjusting the bandwidth will change the smoothness of the density estimation.");
+                sliderText.text("kde bandwidth:");
+                metricDescription.text("the kde plot visualizes the density of proposals in the space. the darker areas indicate a higher concentration of proposals, while lighter areas indicate a lower concentration. adjusting the bandwidth will change the smoothness of the density estimation.");
 
                 let contours = d3.contourDensity()
                     .x(d => x(d.umap_x))
@@ -267,8 +293,8 @@
                 slider_svg.call(slider);
             }
             else if (selected_metric == "hit_rate") {
-                sliderText.text("Hexbin Radius:");
-                metricDescription.text("The hexbin plot visualizes the hit rate, or percent of proposals awarded in each hexagon space. Each hexagon's color intensity represents the hit rate, with darker colors indicating a higher hit rate (more awarded proposals). Adjusting the radius will change the size of the hexagons, affecting how many proposals are aggregated into each hexagon. Hover over each hexagon to see the hit rate, total proposals, and awarded proposals.");
+                sliderText.text("hexbin radius:");
+                metricDescription.text("the hexbin plot visualizes the hit rate, or percent of proposals awarded in each hexagon space. each hexagon's color intensity represents the hit rate, with darker colors indicating a higher hit rate (more awarded proposals). adjusting the radius will change the size of the hexagons, affecting how many proposals are aggregated into each hexagon. hover over each hexagon to see the hit rate, total proposals, and awarded proposals.");
 
                 let hexbin = d3.hexbin()
                     .x(d => x(d.umap_x))
