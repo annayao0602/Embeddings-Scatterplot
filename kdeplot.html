@@ -70,7 +70,7 @@
         opacity: 0;
     }
     #kde-metric {
-        font-size: 14px;
+        font-size: 16px;
         font-family: 'Inria Serif';
         color:#002E63;
 
@@ -79,8 +79,10 @@
         font-size: 16px;
         font-family: 'Inria Serif';
     }
-    #controls {
+    #controls p{
         font-family: 'Inria Serif';
+        margin-right: 30px;
+        font-size: 14px;
     }
     #scatterplot-button:hover {
         scale: 1.1;
@@ -114,6 +116,10 @@
         display: flex;
         gap: 40px;
     }
+    #slider-container p {
+        font-family: 'Inria Serif';
+        font-size: 16px;
+    }
    
 </style>
 <body>
@@ -123,7 +129,7 @@
                 <img src="cdh.png" alt="CDH Logo" width="70px" height="80px">
             </div>
             <div class = "header">
-                <h1>uva research insights scatterplot</h1>
+                <h1>uva research insights kde plot</h1>
             </div>
         </div>
         <div id = 'buttons'>
@@ -148,14 +154,11 @@
     <div class = "container">
         <div id="chart-container"></div>
         <div id = "panel">
+            <h2 id = "plot-type"></h2>
             <div id = "controls" class = "card">
-                <h2>controls</h2>
-                <p>move the sliding bar to toggle kde bandwidth or hexbin radius. change the dropdown menu to visualize different metrics.</p>
-                <p id = "metric-description"></p>
-                <br>
                 <div id = "options">
                     <div id = "kde-metric-container">
-                        <label for="kde-metric">metric:</label>
+                        <label for="kde-metric"></label>
                         <select id="kde-metric">
                             <option value="density" selected>density of proposals</option>
                             <option value="hit_rate">hit rate of proposals awarded</option>
@@ -167,7 +170,13 @@
                     <p id = "slider-text"></p>
                     <div id = "slider"></div>
                 </div>
+                <br>
+                <br>
+                <p>move the sliding bar to toggle kde bandwidth or hexbin radius. change the dropdown menu to visualize different metrics.</p>
+                <p id = "metric-description"></p>
+            </div>
         </div>
+    </div>
 </body>
 <script>
     d3.text("proposals_with_embeddings_full_updated.json").then(function(text) {
@@ -203,6 +212,7 @@
 
         const sliderText = d3.select("#slider-text");
         const metricDescription = d3.select("#metric-description");
+        const plotType = d3.select("#plot-type");
 
         const tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
@@ -218,19 +228,30 @@
 
             svg.append("g")
                 .attr("transform", `translate(0,${height - marginBottom})`)
-                .call(d3.axisBottom(x).tickSizeOuter(0))
-                .call(g => g.select(".domain").remove())
+                .call(d3.axisBottom(x)
+                    .tickSizeOuter(0)
+                    .tickFormat(""))
+                //.call(g => g.select(".domain").remove())
                 .call(g => g.select(".tick:last-of-type text").clone()
                     .attr("y", -3)
-                    .attr("dy", null)
-                    .attr("font-weight", "bold"));
+                    .attr("dy", 1)
+                    .attr("font-weight", "bold"))
+                .call(g => g.selectAll(".domain, .tick line")
+                    .attr("stroke", "#808080") 
+                );
             
             svg.append("g")
                 .attr("transform", `translate(${marginLeft},0)`)
-                .call(d3.axisLeft(y).tickSizeOuter(0))
-                .call(g => g.select(".domain").remove())
+                .call(d3.axisLeft(y)
+                    .tickSizeOuter(0)
+                    .tickFormat(""))
+                //.call(g => g.select(".domain").remove())
                 .call(g => g.select(".tick:last-of-type text").clone()
-                    .attr("x", 3));
+                    .attr("x", 3))
+                .call(g => g.selectAll(".domain, .tick line")
+                    .attr("stroke", "#808080") 
+                );
+                
 
             let slider_svg = d3.select('#slider')
                     .append('svg')
@@ -243,6 +264,7 @@
             if(selected_metric == "density") {
                 sliderText.text("kde bandwidth:");
                 metricDescription.text("the kde plot visualizes the density of proposals in the space. the darker areas indicate a higher concentration of proposals, while lighter areas indicate a lower concentration. adjusting the bandwidth will change the smoothness of the density estimation.");
+                plotType.text("kde plot");
 
                 let contours = d3.contourDensity()
                     .x(d => x(d.umap_x))
@@ -254,9 +276,21 @@
             
                 const color = d3.scaleSequential()
                     .domain([0, d3.max(contours, d => d.value)])
-                    .interpolator(d3.interpolateBlues); 
+                    .interpolator(t => d3.interpolateBlues(0.1 + (0.90 * t))); 
+                
+                const kdeGroup = svg.append("g")
+                    .attr("class", "kde-layer") 
+                    .attr("stroke", "#f9f9f9")     
+                    .attr("stroke-width", 0.5)  
+                    .attr("stroke-linejoin", "round");
+                kdeGroup.selectAll("path")
+                    .data(contours)
+                    .join("path")
+                    .attr("fill", d => color(d.value)) 
+                    .attr("d", d3.geoPath());
+                
     
-                svg.append("g")
+                /*svg.append("g")
                     .attr("stroke", "#fff")     
                     .attr("stroke-width", 0.5)  
                     .attr("stroke-linejoin", "round")
@@ -265,6 +299,7 @@
                     .join("path")
                     .attr("fill", d => color(d.value)) 
                     .attr("d", d3.geoPath());
+                    */
                 
                 const update_bandwidth = (bandwidth) => {
                     const new_contours = d3.contourDensity()
@@ -274,12 +309,17 @@
                         .bandwidth(bandwidth)
                         .thresholds(15)
                         (data);
-                    
-                    svg.selectAll("path")
+
+                    kdeGroup.selectAll("path")
                         .data(new_contours)
                         .join("path")
                         .attr("fill", d => color(d.value)) 
                         .attr("d", d3.geoPath());
+                    /*svg.selectAll("path")
+                        .data(new_contours)
+                        .join("path")
+                        .attr("fill", d => color(d.value)) 
+                        .attr("d", d3.geoPath());*/
                 };
                 const slider = d3.sliderHorizontal()
                     .min(10)
@@ -295,6 +335,7 @@
             else if (selected_metric == "hit_rate") {
                 sliderText.text("hexbin radius:");
                 metricDescription.text("the hexbin plot visualizes the hit rate, or percent of proposals awarded in each hexagon space. each hexagon's color intensity represents the hit rate, with darker colors indicating a higher hit rate (more awarded proposals). adjusting the radius will change the size of the hexagons, affecting how many proposals are aggregated into each hexagon. hover over each hexagon to see the hit rate, total proposals, and awarded proposals.");
+                plotType.text("hexbin plot");
 
                 let hexbin = d3.hexbin()
                     .x(d => x(d.umap_x))
@@ -313,11 +354,11 @@
                 }
                 const hitRateColor = d3.scaleSequential()
                     .domain([0, 1])
-                    .interpolator(d3.interpolateBlues);
+                    .interpolator(t => d3.interpolateBlues(0.15 + (0.85 * t)));
 
                 const hexGroup = svg.append("g")
                     .attr("class", "hexagon-group") 
-                    .attr("stroke", "#fff")
+                    .attr("stroke", "#f9f9f9")
                     .attr("stroke-width", 0.5);
 
                 hexGroup.selectAll("path")
