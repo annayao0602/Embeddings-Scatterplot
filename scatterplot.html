@@ -193,6 +193,7 @@
                 const { Title, 'Proposal PI' : ProposalPI, 'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory, 'HURON Authorized Amount' : HURONAuthorizedAmount, umap_x, umap_y } = JSON.parse(line);
                 return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : +HURONAuthorizedAmount ?? 0, umap_x: +umap_x, umap_y: +umap_y };
             });
+            
 
             const getSponsorCategory = (d) => {
                 const originalCategory = d['Proposal Direct Sponsor Category'].toLowerCase();
@@ -228,7 +229,7 @@
             const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
             let colorMode = 'direct sponsor';
             const amountExtent = d3.extent(data, d => d['HURON Authorized Amount']); 
-            const amountColorScale = d3.scaleSequentialLog(t => d3.interpolateGnBu(0.1 + (0.9*t)))
+            const amountColorScale = d3.scaleSequentialLog(d3.interpolateGnBu)
                 .domain([1, amountExtent[1]]);
             
 
