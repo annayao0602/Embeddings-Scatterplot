@@ -41,6 +41,7 @@
         box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         opacity: 0;
         color: #002E63;
+        z-index: 9999;
     }
     .card {
         padding: 0px;
@@ -122,6 +123,18 @@
         font-size: 16px;
         color: #002E63;
     }
+    #checkboxes {
+        font-size: 16px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        margin-right: 40px;
+    }
+    .checkbox_group {
+        display: flex;
+        align-items: center;
+    }
+
     
 
 </style>
@@ -157,6 +170,18 @@
         <div id="my_scatter"></div>
         <div id = "panel">
             <div id = "controls" class = "card">
+                <div id = "checkboxes">
+                    <div class = "checkbox_group">
+                        <input type="checkbox" id="papers">
+                        <label for="papers"> papers</label><br>
+                    </div>
+                    <div class = "checkbox_group">
+                        <input type="checkbox" id="proposals" checked>
+                        <label for="proposals"> proposals</label><br>
+                    </div> 
+                </div>
+                <br>
+                <br>
                 <div id = "options">
                     <div id = "color-mode-control">
                         <label for="color-mode-select">color mode:</label>
@@ -185,16 +210,178 @@
 
         import { updateLegend } from './updateLegend.js';
 
-        //----D3FC version with WebGL ----
-        d3.text("proposals_with_embeddings_full_updated.json").then(function(text) {
-            const lines = text.trim().split('\n');
+        d3.csv("paper_proposal_combined.csv").then(function(data) {
 
-            const data = lines.map(line => {
-                const { Title, 'Proposal PI' : ProposalPI, 'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory, 'HURON Authorized Amount' : HURONAuthorizedAmount, umap_x, umap_y } = JSON.parse(line);
-                return { Title, 'Proposal PI': ProposalPI,  'Proposal Direct Sponsor Category' : ProposalDirectSponsorCategory ?? 'No Direct Sponsor', 'HURON Authorized Amount' : +HURONAuthorizedAmount ?? 0, umap_x: +umap_x, umap_y: +umap_y };
-            });
+            const quadtree = d3.quadtree()
+                .x(d => d.umap_x)
+                .y(d => d.umap_y)
+                .addAll(data);
+
+            const x = d3.scaleLinear().domain([0, 24]).nice();
+            const y = d3.scaleLinear().domain([-5,15]).nice();
+
+            let showPapers = false;
+            let showProposals = true;
+            let highlightData = []; 
+
+            const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+
+            const colorScale = d3.scaleOrdinal()
+                .domain([0, 1]) 
+                .range(["#1f77b4", "#ff7f0e"]);
+
+
+            const fillColor = fc.webglFillColor()
+                .value(d => {
+                    const isProposal = +d.whether_proposal; 
+                    const color = d3.color(colorScale(isProposal));
+                    return [color.r / 255, color.g / 255, color.b / 255, 0.8]; 
+                });
+
+            const scatter = fc.seriesWebglPoint()
+                    .type(d3.symbolCircle)
+                    .size(30)
+                    .xScale(x)
+                    .yScale(y)
+                    .crossValue(d => d.umap_x)
+                    .mainValue(d => d.umap_y)
+                    .decorate(program => {
+                        fillColor(program);
+                        const context = program.context();
+                        context.enable(context.BLEND);
+                        context.blendFunc(context.SRC_ALPHA, context.ONE_MINUS_SRC_ALPHA);
+                    });
+
+            const highlightSeries = fc.seriesSvgPoint()
+                .type(d3.symbolCircle)
+                .size(30) 
+                .xScale(x)
+                .yScale(y)
+                .crossValue(d => d.umap_x)
+                .mainValue(d => d.umap_y)
+                .decorate(selection => {
+                    selection.select('path')
+                        .style('fill', 'none')
+                        .style('stroke', 'black')
+                        .style('stroke-width', 0.6);
+                });
+
             
+            const highlightMulti = fc.seriesSvgMulti()
+                .series([highlightSeries])
+                .mapping((data, index, series) => highlightData);
 
+
+            // --- 3. CHART COMPOSITION ---
+            const chart = fc
+                .chartCartesian(x, y)
+                .webglPlotArea(scatter)       
+                .svgPlotArea(highlightMulti)  // Use the Multi series here
+                .xTickFormat(() => "")
+                .yTickFormat(() => "");
+
+            // --- 4. RENDER LOOP ---
+            const render = () => {
+                let displayData = data;
+
+                displayData = displayData.filter(d => {
+                    const isProposal = d.whether_proposal == 1;
+                    if (isProposal && !showProposals) return false;
+                    if (!isProposal && !showPapers) return false;
+                    return true;
+                });
+
+                fillColor.data(displayData);      
+
+                d3.select('#my_scatter')
+                    .datum(displayData)
+                    .call(chart);
+            };
+
+            function attachListeners() {
+                const plotArea = d3.select('#my_scatter d3fc-svg.plot-area');
+                plotArea.style('pointer-events', 'all');
+
+                plotArea.on('mousemove', (event) => {
+                    const [mouseX, mouseY] = d3.pointer(event);
+                    const xVal = x.invert(mouseX);
+                    const yVal = y.invert(mouseY);
+
+                    const closest = quadtree.find(xVal, yVal, 1);
+
+                    let isVisible = false;
+                    if (closest) {
+                        const isProposal = closest.whether_proposal == 1;
+                        if ((isProposal && showProposals) || (!isProposal && showPapers)) {
+                            isVisible = true;
+                        }
+                    }
+
+                    if (closest && isVisible) {
+                        highlightData = [closest]; 
+                        d3.select("#my_scatter").style("cursor", "pointer");
+                        tooltip.style("opacity", 0.9);
+                        tooltip.html(
+                            `<strong>title</strong>: ${closest.Title} <br> 
+                            <strong>pi</strong>: ${closest['Proposal PI']} <br>
+                            <strong>subfield</strong>: ${closest['subfield_name']}
+
+                        `)
+                            
+                            .style("left", (event.pageX + 15) + "px")
+                            .style("top", (event.pageY - 20) + "px");
+                    } else {
+                        highlightData = []; 
+                        tooltip.style("opacity", 0);
+
+                        d3.select('#my_scatter').style("cursor", "default");
+                    }
+
+                    render();
+                });
+
+                plotArea.on('click', () => {
+                    if (highlightData.length > 0) {
+                        const d = highlightData[0];
+                        d3.select("#info").html(`
+                            <h2>information</h2>
+                            <p><strong>title:</strong> ${d.Title}</p> 
+                            <p><strong>pi:</strong> ${d['Proposal PI']}</p>
+                            <p><strong>direct sponsor category:</strong> ${d['Proposal Direct Sponsor']}</p>
+                            <p><strong>subfield</strong>: ${d['subfield_name']}</p>
+                        `);
+                    }
+                });
+                
+                plotArea.on('mouseleave', () => {
+                    highlightData = [];
+                    tooltip.style("opacity", 0);
+                    render();
+                });
+            }
+
+            d3.select("#papers").on("change", function() {
+                showPapers = this.checked;
+                render();
+            });
+
+            d3.select("#proposals").on("change", function() {
+                showProposals = this.checked;
+                render();
+            });
+
+            const zoom = fc.zoom().on('zoom', render);
+            d3.select('#my_scatter').call(zoom, x, y);
+            
+            render();
+            attachListeners();
+});
+
+
+
+
+            
+            /*
             const getSponsorCategory = (d) => {
                 const originalCategory = d['Proposal Direct Sponsor Category'].toLowerCase();
                 
@@ -400,7 +587,9 @@
             updateChart(data);
             updateLegend(data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
             render();
-        });
+            */
+        
+        
     
     </script>
 
