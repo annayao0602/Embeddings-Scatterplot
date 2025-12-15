@@ -1,4 +1,4 @@
-export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight) => {
+export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight) => {
     const legendContainer = d3.select("#legend");
     legendContainer.select(".legend-items").remove();
     const legend = legendContainer.append("div").attr("class", "legend-items");
@@ -38,13 +38,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
         });
     }
     else if (colorMode === 'awarded') {
-        /*const awardedItem = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
-        awardedItem.append("div").style("width", "12px").style("height", "12px").style("background-color", 'rgb(25, 153, 229)').style("margin-right", "10px");
-        awardedItem.append("span").text('Awarded');
-
-        const notAwardedItem = legend.append("div").attr("class", "legend-item").style("display", "flex").style("align-items", "center").style("margin-bottom", "5px");
-        notAwardedItem.append("div").style("width", "12px").style("height", "12px").style("background-color", 'rgb(153, 115, 76)').style("margin-right", "10px");
-        notAwardedItem.append("span").text('Not Awarded'); */
+       
         const oneSelected = highlightedCategories.length === 1;
         legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const awardCategory = d3.rollup(data, v => v.length, getAwardedStatus);

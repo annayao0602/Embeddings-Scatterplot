@@ -134,8 +134,12 @@
         display: flex;
         align-items: center;
     }
-
-    
+    .disabled-text {
+        text-decoration: line-through;
+        color: #999; 
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
 
 </style>
 <body>
@@ -186,9 +190,10 @@
                     <div id = "color-mode-control">
                         <label for="color-mode-select">color mode:</label>
                         <select id="color-mode-select">
-                            <option value="direct sponsor" selected>direct sponsor</option>
-                            <option value="awarded">awarded or not</option>
-                            <option value="amount">amount awarded</option>
+                            <option value = "research category" selected>research category</option>
+                            <option value="direct sponsor">direct sponsor</option>
+                            <option value="proposal status">proposal status</option>
+                            <option value="amount awarded">amount awarded</option>
                         </select>
                     </div>
                 </div>
@@ -211,18 +216,67 @@
         import { updateLegend } from './updateLegend.js';
 
         d3.csv("paper_proposal_combined.csv").then(function(data) {
+            
+            data.forEach(d => {
+                d.umap_x = +d.umap_x;
+                d.umap_y = +d.umap_y;
+                d.whether_proposal = +d.whether_proposal;
+                d.proposal_status = d['Proposal Status'];
+                d.award_amount = +d['award_amount'] || 0; 
+            });
 
             const quadtree = d3.quadtree()
                 .x(d => d.umap_x)
                 .y(d => d.umap_y)
                 .addAll(data);
 
-            const x = d3.scaleLinear().domain([0, 24]).nice();
-            const y = d3.scaleLinear().domain([-5,15]).nice();
+            //CHANGE WIHT NEW DATASET
+            const getSponsorCategory = (d) => {
+                const originalCategory = d['Proposal Direct Sponsor'].toLowerCase();
+                
+                const otherCategories = [
+                    'foundation',
+                    'local government',
+                    'foreign government',
+                    'other state governments',
+                    'mc',
+                    'no direct sponsor',
+                    'foreign foundation',
+                    'foreign higher education institutions',
+                    'virginia state higher education institutions',
+                    'foreign industry'
+                ];
+                
+                if (otherCategories.includes(originalCategory)) {
+                    return 'other';
+                }
+                return originalCategory;
+            };
+
+            const getAwardedStatus = (d) => {
+                const originalStatus = d['Proposal Status'].toLowerCase();
+                if (originalStatus.includes('awarded')) {
+                    return 'awarded';
+                } else if (originalStatus.includes('not funded')) {
+                    return 'not funded';
+                } else {
+                    return 'other';
+                }
+            }
+
+            const min_x = d3.min(data, d => d.umap_x);
+            const max_x = d3.max(data, d => d.umap_x);
+
+            const min_y = d3.min(data, d => d.umap_y);
+            const max_y = d3.max(data, d => d.umap_y);
+
+            const x = d3.scaleLinear().domain([min_x, max_x]).nice();
+            const y = d3.scaleLinear().domain([min_y, max_y]).nice();
 
             let showPapers = false;
             let showProposals = true;
             let highlightData = []; 
+            let colorMode = 'research category';
 
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
@@ -230,13 +284,77 @@
                 .domain([0, 1]) 
                 .range(["#1f77b4", "#ff7f0e"]);
 
+            const categoryColorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-            const fillColor = fc.webglFillColor()
-                .value(d => {
-                    const isProposal = +d.whether_proposal; 
-                    const color = d3.color(colorScale(isProposal));
-                    return [color.r / 255, color.g / 255, color.b / 255, 0.8]; 
-                });
+            const statusColorScale = d3.scaleOrdinal()
+                .domain(['awarded', 'not funded', 'other'])
+                .range(['#1A99E6', '#D67229', '#708090']);
+
+            const amountExtent = d3.extent(data, d => +d['award_amount']);
+            const amountColorScale = d3.scaleSequentialLog(d3.interpolateGnBu)
+                .domain([1, amountExtent[1]]);
+
+            const fillColor = fc.webglFillColor();
+
+            const toggleCategoryHighlight = (category) => {
+                const index = highlightedCategories.indexOf(category);
+                
+                if (index === -1) {
+                    highlightedCategories.push(category);
+                } else {
+                    highlightedCategories.splice(index, 1);
+                }
+
+                updateChart(data);
+                updateLegend(data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
+                render();
+            };
+
+
+            const updateChart = (displayData) => {
+                if (colorMode === "direct sponsor" || colorMode === "proposal status" || colorMode === "amount awarded") {
+                    showPapers = false; 
+
+                    d3.select("#papers")
+                        .property("checked", false)
+                        .attr("disabled", true);
+                        
+                    d3.select("label[for='papers']")
+                        .classed("disabled-text", true);
+                } else {
+                    
+                    d3.select("#papers")
+                        .attr("disabled", null);
+                    d3.select("label[for='papers']")
+                        .classed("disabled-text", false);
+                }
+                fillColor.value(d => {
+                    if (colorMode === 'research category') {
+                        const isProposal = +d.whether_proposal; 
+                        const color = d3.color(colorScale(isProposal));
+                        return [color.r / 255, color.g / 255, color.b / 255, 0.8]; 
+                    }
+                    else if (colorMode === 'direct sponsor') {
+                        const category = getSponsorCategory(d);
+                        const color = d3.color(categoryColorScale(category));
+                        return [color.r / 255, color.g / 255, color.b / 255, 0.94]; 
+                    }
+                    else if (colorMode === 'proposal status') {
+                        const status = getAwardedStatus(d);
+                        const color = d3.color(statusColorScale(status));
+                        return [color.r / 255, color.g / 255, color.b / 255, 1.0];
+                    }
+                    else if (colorMode === 'amount awarded') {
+                        const amount = +d['award_amount'];
+                        if (amount <= 0) {
+                            return [0.39, 0.39, 0.39, 0.6]; 
+                        }
+                        const logAmount = Math.log10(+d['HURON Authorized Amount']); 
+                        const color = d3.color(amountColorScale(amount));
+                        return [color.r / 255, color.g / 255, color.b / 255, 1.0];
+                    }                   
+                })  
+            }
 
             const scatter = fc.seriesWebglPoint()
                     .type(d3.symbolCircle)
@@ -272,17 +390,22 @@
                 .mapping((data, index, series) => highlightData);
 
 
-            // --- 3. CHART COMPOSITION ---
             const chart = fc
                 .chartCartesian(x, y)
                 .webglPlotArea(scatter)       
-                .svgPlotArea(highlightMulti)  // Use the Multi series here
+                .svgPlotArea(highlightMulti) 
                 .xTickFormat(() => "")
                 .yTickFormat(() => "");
 
-            // --- 4. RENDER LOOP ---
             const render = () => {
                 let displayData = data;
+
+                if (colorMode === 'direct sponsor' && highlightedCategories.length > 0) {
+                    displayData = data.filter(d => highlightedCategories.includes(getSponsorCategory(d)));
+                }
+                if (colorMode === 'awarded' && highlightedCategories.length > 0) {
+                    displayData = data.filter(d => highlightedCategories.includes(getAwardedStatus(d)));
+                }
 
                 displayData = displayData.filter(d => {
                     const isProposal = d.whether_proposal == 1;
@@ -291,7 +414,9 @@
                     return true;
                 });
 
-                fillColor.data(displayData);      
+                fillColor.data(displayData);  
+ 
+                updateChart(displayData);   
 
                 d3.select('#my_scatter')
                     .datum(displayData)
@@ -362,18 +487,32 @@
 
             d3.select("#papers").on("change", function() {
                 showPapers = this.checked;
+                updateChart(data);
                 render();
             });
 
             d3.select("#proposals").on("change", function() {
                 showProposals = this.checked;
+                updateChart(data);
+                render();
+            });
+
+            d3.select('#color-mode-select').on('change', (event) => {
+                colorMode = event.target.value;
+                console.log("Color mode changed to:", colorMode);
+
+                updateChart(data);
+                updateLegend(data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
                 render();
             });
 
             const zoom = fc.zoom().on('zoom', render);
             d3.select('#my_scatter').call(zoom, x, y);
             
+            updateChart(data);
+            updateLegend(data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
             render();
+
             attachListeners();
 });
 
