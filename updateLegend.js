@@ -3,7 +3,10 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
     legendContainer.select(".legend-items").remove();
     const legend = legendContainer.append("div").attr("class", "legend-items");
 
-    if (colorMode === 'direct sponsor') {
+    if(colorMode === 'research category') {
+        legend.append("p").text("Use checkboxes above to highlight corresponding points").attr("style", "font-size: 14px;");
+    }
+    else if (colorMode === 'direct sponsor') {
         const noneSelected = highlightedCategories.length === 0;
         legend.append("p").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const groupedCounts = d3.rollup(
@@ -11,18 +14,15 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
             v => v.length, 
             getSponsorCategory 
         );
+        console.log("Grouped Counts:", groupedCounts);
 
         const sortedCategories = Array.from(groupedCounts, ([category, count]) => ({ category, count }))
             .sort((a, b) => b.count - a.count);
-        console.log(sortedCategories);
         
         sortedCategories.forEach(item => {
             const category = item.category;
-
             const isActive = highlightedCategories.includes(category);
-            
-            const color = colorScale(category);
-
+            const color = categoryColorScale(category);
             const itemDiv = legend.append("div")
                 .style("display", "flex")
                 .style("align-items", "center")
@@ -37,31 +37,33 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
             itemDiv.append("span").text(category).style("font-size", "16px");
         });
     }
-    else if (colorMode === 'awarded') {
-       
-        const oneSelected = highlightedCategories.length === 1;
+    else if (colorMode === 'proposal status') {
+        const noneSelected = highlightedCategories.length === 0;
         legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const awardCategory = d3.rollup(data, v => v.length, getAwardedStatus);
-        const sortedAwardCategory = Array.from(awardCategory, ([category, count]) => [category, count]).sort((a,b) => b.count - a.count);
-        console.log(sortedAwardCategory);
+
+        const sortedAwardCategory = Array.from(awardCategory, ([category, count]) => ({category, count}))
+            .sort((a,b) => b.count - a.count);
 
         sortedAwardCategory.forEach(item => {
-            const category = item[0];
+            const category = item.category;
             const awardActive = highlightedCategories.includes(category);
+            const color_awarded = statusColorScale(category);
+
             const itemDiv = legend.append("div")
                 .style("display", "flex")
                 .style("align-items", "center")
                 .style("margin-bottom", "5px")
                 .style("cursor", "pointer")
                 .on("click", () => toggleCategoryHighlight(category));
-            if (oneSelected) {
+            if (!noneSelected) {
                 itemDiv.attr("class", `legend-item ${!awardActive ? 'inactive-highlight' : ''}`)
             }
-            itemDiv.append("div").style("width", "12px").style("height", "12px").style("background-color", category === "Awarded" ? 'rgb(25, 153, 229)' : 'rgb(153, 115, 76)').style("margin-right", "10px").style("opacity", "0.94");
+            itemDiv.append("div").style("width", "12px").style("height", "12px").style("background-color", color_awarded).style("margin-right", "10px").style("opacity", "0.94");
             itemDiv.append("span").text(category).style("font-size", "16px");
             });
         }
-    else if (colorMode === 'amount') {
+    else if (colorMode === 'amount awarded') {
         legend.append("h3").text("Logged Amount").attr("style", "font-size: 14px; margin-bottom: 5px;");
         const legendSvg = legend.append("svg").attr("width", 550).attr("height", 50);
         const defs = legendSvg.append("defs");

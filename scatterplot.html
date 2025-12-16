@@ -176,7 +176,7 @@
             <div id = "controls" class = "card">
                 <div id = "checkboxes">
                     <div class = "checkbox_group">
-                        <input type="checkbox" id="papers">
+                        <input type="checkbox" id="papers" checked>
                         <label for="papers"> papers</label><br>
                     </div>
                     <div class = "checkbox_group">
@@ -221,7 +221,7 @@
                 d.umap_x = +d.umap_x;
                 d.umap_y = +d.umap_y;
                 d.whether_proposal = +d.whether_proposal;
-                d.proposal_status = d['Proposal Status'];
+                d.proposal_status = d['Proposal Status'] || 'NA';
                 d.award_amount = +d['award_amount'] || 0; 
             });
 
@@ -230,10 +230,21 @@
                 .y(d => d.umap_y)
                 .addAll(data);
 
-            //CHANGE WIHT NEW DATASET
+            //CHANGE WITH NEW DATASET
             const getSponsorCategory = (d) => {
                 const originalCategory = d['Proposal Direct Sponsor'].toLowerCase();
-                
+
+                if (originalCategory.includes('u.s.')) {
+                    return 'us government';
+                }
+                else if (originalCategory.includes('university') || originalCategory.includes('college') || originalCategory.includes('institute')) {
+                    return 'higher education institution';
+                }
+                else {
+                    return 'other';
+                }
+
+                /*
                 const otherCategories = [
                     'foundation',
                     'local government',
@@ -251,6 +262,7 @@
                     return 'other';
                 }
                 return originalCategory;
+                */
             };
 
             const getAwardedStatus = (d) => {
@@ -273,10 +285,11 @@
             const x = d3.scaleLinear().domain([min_x, max_x]).nice();
             const y = d3.scaleLinear().domain([min_y, max_y]).nice();
 
-            let showPapers = false;
+            let showPapers = true;
             let showProposals = true;
             let highlightData = []; 
             let colorMode = 'research category';
+            let highlightedCategories = [];
 
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
@@ -358,7 +371,7 @@
 
             const scatter = fc.seriesWebglPoint()
                     .type(d3.symbolCircle)
-                    .size(30)
+                    .size(50)
                     .xScale(x)
                     .yScale(y)
                     .crossValue(d => d.umap_x)
@@ -372,7 +385,7 @@
 
             const highlightSeries = fc.seriesSvgPoint()
                 .type(d3.symbolCircle)
-                .size(30) 
+                .size(40) 
                 .xScale(x)
                 .yScale(y)
                 .crossValue(d => d.umap_x)
@@ -403,7 +416,7 @@
                 if (colorMode === 'direct sponsor' && highlightedCategories.length > 0) {
                     displayData = data.filter(d => highlightedCategories.includes(getSponsorCategory(d)));
                 }
-                if (colorMode === 'awarded' && highlightedCategories.length > 0) {
+                if (colorMode === 'proposal status' && highlightedCategories.length > 0) {
                     displayData = data.filter(d => highlightedCategories.includes(getAwardedStatus(d)));
                 }
 
@@ -474,6 +487,7 @@
                             <p><strong>pi:</strong> ${d['Proposal PI']}</p>
                             <p><strong>direct sponsor category:</strong> ${d['Proposal Direct Sponsor']}</p>
                             <p><strong>subfield</strong>: ${d['subfield_name']}</p>
+                            <p><strong>amount awarded:</strong> $${d['award_amount']}</p>
                         `);
                     }
                 });
@@ -500,6 +514,8 @@
             d3.select('#color-mode-select').on('change', (event) => {
                 colorMode = event.target.value;
                 console.log("Color mode changed to:", colorMode);
+
+                highlightedCategories = [];
 
                 updateChart(data);
                 updateLegend(data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);

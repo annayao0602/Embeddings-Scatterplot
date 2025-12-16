@@ -177,7 +177,7 @@
         <div id = "panel">
             <div id = "checkboxes">
                     <div class = "checkbox_group">
-                        <input type="checkbox" id="papers">
+                        <input type="checkbox" id="papers" checked>
                         <label for="papers"> papers</label><br>
                     </div>
                     <div class = "checkbox_group">
@@ -238,7 +238,7 @@
         const xPadding = (xExtent[1] - xExtent[0]) * 0.05;
 
         const selected_metric = d3.select("#kde-metric").property("value");
-        let showPapers = false;
+        let showPapers = true;
         let showProposals = true;
 
         const bandwidths = [10, 15, 20, 25, 30, 35];
