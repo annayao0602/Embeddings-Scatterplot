@@ -110,7 +110,22 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-direction: column;
         padding: 20px;
+        margin-right: 20px;
+    }
+    #header-main-content {
+        display: flex;
+        justify-content: space-between; 
+        align-items: center;
+        width: 100%;
+    }
+    .header-line {
+        height: 1px;             
+        background-color: #002E63; 
+        width: 95%;             
+        margin-top: -7px;       
+        margin-left: 100px;
         margin-right: 20px;
     }
     #buttons {
@@ -162,31 +177,34 @@
 </style>
 <body>
     <div id = outer-header-container>
-        <div id = 'header-container'>
-            <div id = "logo">
-                <img src="/images/cdh.png" alt="CDH Logo" width="70px" height="80px">
+        <div id = "header-main-content">
+            <div id = 'header-container'>
+                <div id = "logo">
+                    <img src="/images/cdh.png" alt="CDH Logo" width="70px" height="80px">
+                </div>
+                <div class = "header">
+                    <h1>uva research insights density plot</h1>
+                </div>
             </div>
-            <div class = "header">
-                <h1>uva research insights density plot</h1>
+            <div id = 'buttons'>
+                <div id = 'kdeplot-button'>
+                    <a href = "kdeplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
+                        <p>density plot</p>
+                    </a>
+                </div>
+                <div id = 'scatterplot-button'>
+                    <a href = "scatterplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
+                        <p>scatterplot</p>
+                    </a>
+                </div>
+                <div id = 'about-button'>
+                    <a href = "about.html" style="text-decoration: none; color: #002E63; font-size: 18px">
+                        <p>about</p>
+                    </a>
+                </div>
             </div>
         </div>
-        <div id = 'buttons'>
-            <div id = 'kdeplot-button'>
-                <a href = "kdeplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
-                    <p>density plot</p>
-                </a>
-            </div>
-            <div id = 'scatterplot-button'>
-                <a href = "scatterplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
-                    <p>scatterplot</p>
-                </a>
-            </div>
-            <div id = 'about-button'>
-                <a href = "about.html" style="text-decoration: none; color: #002E63; font-size: 18px">
-                    <p>about</p>
-                </a>
-            </div>
-        </div>
+        <div class="header-line"></div>
     </div>
     
     <div class = "container">
@@ -195,12 +213,16 @@
             <div id = "checkboxes">
                     <div class = "checkbox_group">
                         <input type="checkbox" id="papers" checked style="display: none;">
-                        <label for="papers"> papers</label><br>
+                        <label for="papers" class="toggle-label"> papers</label><br>
                     </div>
                     <div class = "checkbox_group">
                         <input type="checkbox" id="proposals" checked style="display: none;">
-                        <label for="proposals"> proposals</label><br>
+                        <label for="proposals" class="toggle-label"> proposals</label><br>
                     </div> 
+                    <div class = "checkbox_group">
+                        <input type="checkbox" id="authors" checked style="display: none;">
+                        <label for="authors" class="toggle-label"> authors</label>
+                    </div>
                 </div>
             <h2 id = "plot-type"></h2>
             <div id = "controls" class = "card">
@@ -229,13 +251,18 @@
 </body>
 <script>
 
-    d3.csv("paper_proposal_updated.csv").then(function(data) {
-        data.forEach(d => {
-            d.umap_x = +d.umap_x || null;
-            d.umap_y = +d.umap_y || null;
-            d.Type = d.Type
-            d.award_amount = +d.award_amount || 0;
-        });
+    d3.csv("paper_proposal_updated2.csv").then(function(rawData) {
+        const cleanData = rawData.map(d => {
+            return {
+                ...d,
+                umap_x: parseFloat(d.umap_x),
+                umap_y: parseFloat(d.umap_y),
+                Type: d.Type,
+                award_amount: +d.award_amount || 0
+            };
+        }).filter(d => !isNaN(d.umap_x) && !isNaN(d.umap_y));
+
+        const data = cleanData;
 
         const width = 800;
         const height = 650;
@@ -251,8 +278,8 @@
         const xExtent = d3.extent(data, d => d.umap_x);
         const yExtent = d3.extent(data, d => d.umap_y);
 
-        const yPadding = (yExtent[1] - yExtent[0]) * 0.05;
-        const xPadding = (xExtent[1] - xExtent[0]) * 0.05;
+        const yPadding = (yExtent[1] - yExtent[0]) * 0.1;
+        const xPadding = (xExtent[1] - xExtent[0]) * 0.1;
 
         const selected_metric = d3.select("#kde-metric").property("value");
         let showPapers = true;
@@ -279,24 +306,19 @@
             if (selected_metric === "hit_rate") {
                 showPapers = false; 
 
-                d3.select("#papers")
-                    .property("checked", false)
-                    .attr("disabled", true);
-                    
                 d3.select("label[for='papers']")
-                    .classed("disabled-text", true);
+                        .classed("disabled-text", true)
+                        .classed("inactive-text", false);
             } else {
-                
-                d3.select("#papers")
-                    .attr("disabled", null);
-                d3.select("label[for='papers']")
-                    .classed("disabled-text", false);
-            }
+                    d3.select("label[for='papers']")
+                        .classed("disabled-text", false)
+                        .classed("inactive-text", !showPapers);     
+                }
             d3.select("#chart-container").selectAll("*").remove();
             d3.select("#slider").selectAll("*").remove();
 
             const filteredData = data.filter( d=> {
-                const isProposal = d.Type === 'proposal' && d.umap_x != null && d.umap_y != null;
+                const isProposal = d.Type === 'proposal';
                 if (isProposal && !showProposals) return false;
                 if (!isProposal && !showPapers) return false;
                 return true;
@@ -489,12 +511,16 @@
 
         d3.select("#papers").on("change", function() {
             showPapers = this.checked;
+            d3.select("label[for='papers']").classed("inactive-text", !showPapers);
+    
             const currentMetric = d3.select("#kde-metric").property("value");
             drawChart(currentMetric);
         });
 
         d3.select("#proposals").on("change", function() {
             showProposals = this.checked;
+            d3.select("label[for='proposals']").classed("inactive-text", !showProposals);
+    
             const currentMetric = d3.select("#kde-metric").property("value");
             drawChart(currentMetric);
         });

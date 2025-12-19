@@ -119,7 +119,6 @@
         align-items: center;
         width: 100%;
     }
-
     .header-line {
         height: 1px;             
         background-color: #002E63; 
@@ -255,37 +254,26 @@
 
         import { updateLegend } from './updateLegend.js';
 
-        d3.csv("paper_proposal_updated.csv").then(function(data) {
-            
-            data.forEach(d => {
-                d.umap_x = +d.umap_x;
-                d.umap_y = +d.umap_y;
-                d.Type = d.Type;
-                d.proposal_status = d['Proposal Status'] || 'NA';
-                d.award_amount = +d['award_amount'] || 0; 
-                const prime_cat = d['Proposal Prime Sponsor Category'];
-                const direct_cat = d['Proposal Direct Sponsor Category'];
-                
-                const prime = d['Proposal Prime Sponsor'];
-                const direct = d['Proposal Direct Sponsor'];
+        d3.csv("paper_proposal_updated2.csv").then(function(rawData) {
+            const cleanData = rawData.map(d => {
+                return {
+                    ...d,
+                    umap_x: parseFloat(d.umap_x),
+                    umap_y: parseFloat(d.umap_y),
+                    Type: d.Type,
+                    proposal_status: d['Proposal Status'] || 'NA',
+                    award_amount: +d.award_amount || 0,
+                    sponsor: d.sponsor || 'NA',
+                    proposal_direct_sponsor_category: d['Proposal Direct Sponsor Category'] || 'NA'
+                };
+            }).filter(d => !isNaN(d.umap_x) && !isNaN(d.umap_y));
 
-                if (prime && prime.trim() !== "") {
-                    d.mixed_sponsors_cat = prime_cat;
-                    d.mixed_sponsors = prime;
-                } 
-                else if (direct && direct.trim() !== "") {
-                    d.mixed_sponsors_cat = direct_cat;
-                    d.mixed_sponsors = direct;
-                } 
-                else {
-                    d.mixed_sponsors_cat = 'N/A';
-                    d.mixed_sponsors = 'N/A';
-                }
-            });
+            const data = cleanData;           
+                
             const categoryCounts = d3.rollup(
                 data, 
                 v => v.length, 
-                d => d.mixed_sponsors_cat || "Missing/Null"
+                d => d.proposal_direct_sponsor_category
             );
 
             console.log("--- Mixed Sponsor Category Counts ---");
@@ -297,12 +285,10 @@
                 .addAll(data);
 
             const getSponsorCategory = (d) => {
-                if (!d['mixed_sponsors_cat']) {
+                if (!d['proposal_direct_sponsor_category'] === '') {
                     return 'missing';
                 }
-                const originalCategory = d['mixed_sponsors_cat'].toLowerCase();
-
-                //wanting fed gov, non profit, industry, foreign sponsor, virginia state sponsor, other
+                const originalCategory = d['proposal_direct_sponsor_category'].toLowerCase();
                 
                 const foreignCategories = [
                     'foreign government',
