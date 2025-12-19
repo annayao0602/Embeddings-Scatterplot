@@ -5,12 +5,38 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
 
     if(colorMode === 'research category') {
         legend.append("p").text("Use checkboxes above to highlight corresponding points").attr("style", "font-size: 14px;");
+        const groupedCounts = d3.rollup(
+            data,
+            v => v.length, 
+            d => d['Type'] 
+        );
+
+        const sortedCategories = Array.from(groupedCounts, ([category, count]) => ({ category, count }))
+            .sort((a, b) => b.count - a.count);
+
+        sortedCategories.forEach(item => {
+            const category = item.category;
+            const color = colorScale(category);
+            const itemDiv = legend.append("div")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("margin-bottom", "5px")
+                .style("cursor", "not-allowed");
+
+            itemDiv.append("div").style("width", "12px").style("height", "12px").style("background-color", color).style("margin-right", "10px").style("opacity", "0.94");
+            itemDiv.append("span").text(category).style("font-size", "16px");
+        });
     }
     else if (colorMode === 'direct sponsor') {
         const noneSelected = highlightedCategories.length === 0;
         legend.append("p").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
+        const filteredDataForLegend = data.filter(d => 
+            d.mixed_sponsors_cat !== 'N/A' && 
+            d.mixed_sponsors_cat !== null &&
+            d.Type === 'proposal' 
+        );
         const groupedCounts = d3.rollup(
-            data,
+            filteredDataForLegend,
             v => v.length, 
             getSponsorCategory 
         );

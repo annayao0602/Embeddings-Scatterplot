@@ -141,6 +141,23 @@
         opacity: 0.6;
         cursor: not-allowed;
     }
+    .toggle-label {
+        transition: all 0.3s ease;
+        color: #002E63; 
+        font-weight: bold;
+        cursor: pointer !important; 
+        display: inline-block;
+        padding: 8px 12px;
+    }
+    .inactive-text {
+        text-decoration: line-through;
+        color: #B0B0B0; 
+        opacity: 0.6;
+    }
+    .toggle-label:hover {
+        opacity: 0.7;
+        cursor: pointer;
+    }
    
 </style>
 <body>
@@ -177,11 +194,11 @@
         <div id = "panel">
             <div id = "checkboxes">
                     <div class = "checkbox_group">
-                        <input type="checkbox" id="papers" checked>
+                        <input type="checkbox" id="papers" checked style="display: none;">
                         <label for="papers"> papers</label><br>
                     </div>
                     <div class = "checkbox_group">
-                        <input type="checkbox" id="proposals" checked>
+                        <input type="checkbox" id="proposals" checked style="display: none;">
                         <label for="proposals"> proposals</label><br>
                     </div> 
                 </div>
@@ -212,11 +229,11 @@
 </body>
 <script>
 
-    d3.csv("paper_proposal_combined.csv").then(function(data) {
+    d3.csv("paper_proposal_updated.csv").then(function(data) {
         data.forEach(d => {
-            d.umap_x = +d.umap_x;
-            d.umap_y = +d.umap_y;
-            d.whether_proposal = +d.whether_proposal
+            d.umap_x = +d.umap_x || null;
+            d.umap_y = +d.umap_y || null;
+            d.Type = d.Type
             d.award_amount = +d.award_amount || 0;
         });
 
@@ -279,7 +296,7 @@
             d3.select("#slider").selectAll("*").remove();
 
             const filteredData = data.filter( d=> {
-                const isProposal = d.whether_proposal === 1;
+                const isProposal = d.Type === 'proposal' && d.umap_x != null && d.umap_y != null;
                 if (isProposal && !showProposals) return false;
                 if (!isProposal && !showPapers) return false;
                 return true;
@@ -326,7 +343,7 @@
 
             if(selected_metric == "density") {
                 sliderText.text("density bandwidth:");
-                metricDescription.text("the kde (kernel density) plot visualizes the density of proposals in the space. the darker areas indicate a higher concentration of proposals, while lighter areas indicate a lower concentration. adjusting the bandwidth will change the smoothness of the density estimation.");
+                metricDescription.text("the kde (kernel density) plot visualizes the density of proposals and papers in the space. the darker areas indicate a higher concentration of proposals, while lighter areas indicate a lower concentration. adjusting the bandwidth will change the smoothness of the density estimation.");
                 plotType.text("density plot");
 
                 let contours = d3.contourDensity()
