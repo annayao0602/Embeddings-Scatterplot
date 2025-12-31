@@ -211,8 +211,8 @@
             <div id = "controls" class = "card">
                 <div id = "checkboxes">
                     <div class = "checkbox_group">
-                        <input type="checkbox" id="papers" checked style="display: none;">
-                        <label for="papers" class="toggle-label"> papers</label>
+                        <input type="checkbox" id="publications" checked style="display: none;">
+                        <label for="publications" class="toggle-label"> publications</label>
                     </div>
                     <div class = "checkbox_group">
                         <input type="checkbox" id="proposals" checked style="display: none;">
@@ -254,7 +254,8 @@
 
         import { updateLegend } from './updateLegend.js';
 
-        d3.csv("paper_proposal_updated2.csv").then(function(rawData) {
+        d3.csv("pub_prop_author.csv").then(function(rawData) {
+            console.log("Raw data loaded:", rawData);
             const cleanData = rawData.map(d => {
                 return {
                     ...d,
@@ -264,9 +265,18 @@
                     proposal_status: d['Proposal Status'] || 'NA',
                     award_amount: +d.award_amount || 0,
                     sponsor: d.sponsor || 'NA',
-                    proposal_direct_sponsor_category: d['Proposal Direct Sponsor Category'] || 'NA'
+                    proposal_direct_sponsor_category: d['Proposal Direct Sponsor Category'] || 'NA',
+                    proposal_direct_sponsor: d['Proposal Direct Sponsor'] || 'NA',
+                    proposal_prime_sponsor_category: d['Proposal Prime Sponsor Category'] || 'NA',
+                    proposal_prime_sponsor: d['Proposal Prime Sponsor'] || 'NA',
+                    sponsor_category: d['sponsor_category'] || 'NA',
+                    authorName: d['AuthorName'] || 'NA',
+                    department: d['Department'] || 'NA'
                 };
             }).filter(d => !isNaN(d.umap_x) && !isNaN(d.umap_y));
+
+            console.log("Data breakdown:", d3.rollup(cleanData, v => v.length, d => d.Type));
+            console.log(cleanData);
 
             const data = cleanData;           
                 
@@ -275,9 +285,7 @@
                 v => v.length, 
                 d => d.proposal_direct_sponsor_category
             );
-
-            console.log("--- Mixed Sponsor Category Counts ---");
-            console.table(Array.from(categoryCounts));
+            console.log("Category counts:", categoryCounts);
 
             const quadtree = d3.quadtree()
                 .x(d => d.umap_x)
@@ -345,8 +353,9 @@
             const x = d3.scaleLinear().domain([min_x, max_x]).nice();
             const y = d3.scaleLinear().domain([min_y, max_y]).nice();
 
-            let showPapers = true;
+            let showPublications = true;
             let showProposals = true;
+            let showAuthors = true;
             let highlightData = []; 
             let colorMode = 'research category';
             let highlightedCategories = [];
@@ -354,8 +363,8 @@
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
 
             const colorScale = d3.scaleOrdinal()
-                .domain([0, 1]) 
-                .range(["#1f77b4", "#ff7f0e"]);
+                .domain([0, 1, 2]) 
+                .range(["#1f77b4", "#ff7f0e", "#2ca02c"]);
 
             const categoryColorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
@@ -386,21 +395,30 @@
 
             const updateChart = (displayData) => {
                 if (colorMode === "direct sponsor" || colorMode === "proposal status" || colorMode === "amount awarded") {
-                    showPapers = false; 
+                    showPublications = false
+                    showAuthors = false;
 
-                    d3.select("label[for='papers']")
+                    d3.select("label[for='publications']")
+                        .classed("disabled-text", true)
+                        .classed("inactive-text", false);
+                    d3.select("label[for='authors']")
                         .classed("disabled-text", true)
                         .classed("inactive-text", false);
                 } else {
-                    d3.select("label[for='papers']")
+                    d3.select("label[for='publications']")
                         .classed("disabled-text", false)
-                        .classed("inactive-text", !showPapers);     
+                        .classed("inactive-text", !showPublications);   
+                    d3.select("label[for='authors']")
+                        .classed("disabled-text", false)
+                        .classed("inactive-text", !showAuthors);  
                 }
                 fillColor.value(d => {
                     if (colorMode === 'research category') {
-                        const isProposal = d.Type === 'proposal' ? 1 : 0; 
-                        const color = d3.color(colorScale(isProposal));
-                        return [color.r / 255, color.g / 255, color.b / 255, 0.8]; 
+                        let typeValue = 0; 
+                        if (d.Type === 'proposal') typeValue = 1;
+                        if (d.Type === 'author') typeValue = 2;
+                        const color = d3.color(colorScale(typeValue));
+                        return [color.r / 255, color.g / 255, color.b / 255, 0.8];
                     }
                     else if (colorMode === 'direct sponsor') {
                         const category = getSponsorCategory(d);
@@ -478,9 +496,9 @@
                 }
 
                 displayData = displayData.filter(d => {
-                    const isProposal = d.Type === 'proposal' ? 1 : 0;
-                    if (isProposal && !showProposals) return false;
-                    if (!isProposal && !showPapers) return false;
+                    if (d.Type === 'proposal' && !showProposals) return false;
+                    if (d.Type === 'publication' && !showPublications) return false;
+                    if (d.Type === 'author' && !showAuthors) return false;
                     return true;
                 });
 
@@ -506,25 +524,32 @@
 
                     let isVisible = false;
                     if (closest) {
-                        const isProposal = closest.Type === 'proposal' ? 1 : 0;
-                        if ((isProposal && showProposals) || (!isProposal && showPapers)) {
-                            isVisible = true;
-                        }
+                        if (closest.Type === 'proposal' && showProposals) isVisible = true;
+                        if (closest.Type === 'publication' && showPublications) isVisible = true;
+                        if (closest.Type === 'author' && showAuthors) isVisible = true;
                     }
 
                     if (closest && isVisible) {
                         highlightData = [closest]; 
                         d3.select("#my_scatter").style("cursor", "pointer");
                         tooltip.style("opacity", 0.9);
-                        tooltip.html(
+                        if(closest.Type === "author") {
+                            tooltip.html(
+                            `<strong>author</strong>: ${closest.authorName} <br> 
+                            `)
+                                .style("left", (event.pageX + 15) + "px")
+                                .style("top", (event.pageY - 20) + "px");
+                        }
+                        else {
+                            tooltip.html(
                             `<strong>title</strong>: ${closest.Title} <br> 
                             <strong>pi</strong>: ${closest['Proposal PI']} <br>
                             <strong>subfield</strong>: ${closest['subfield_name']}
-
-                        `)
-                            
-                            .style("left", (event.pageX + 15) + "px")
-                            .style("top", (event.pageY - 20) + "px");
+                            `)
+                                .style("left", (event.pageX + 15) + "px")
+                                .style("top", (event.pageY - 20) + "px");
+                        }
+                        
                     } else {
                         highlightData = []; 
                         tooltip.style("opacity", 0);
@@ -538,14 +563,23 @@
                 plotArea.on('click', () => {
                     if (highlightData.length > 0) {
                         const d = highlightData[0];
-                        d3.select("#info").html(`
-                            <h2>information</h2>
-                            <p><strong>title:</strong> ${d.Title}</p> 
-                            <p><strong>pi:</strong> ${d['Proposal PI']}</p>
-                            <p><strong>direct sponsor category:</strong> ${d['mixed_sponsors']}</p>
-                            <p><strong>subfield</strong>: ${d['subfield_name']}</p>
-                            <p><strong>amount awarded:</strong> $${d['award_amount']}</p>
-                        `);
+                        if (d.Type === 'author') {
+                            d3.select("#info").html(`
+                                <h2>information</h2>
+                                <p><strong>author:</strong> ${d.authorName}</p> 
+                                <p><strong>department:</strong> ${d['department']}</p>
+                            `);                        
+                        }
+                        else {
+                            d3.select("#info").html(`
+                                <h2>information</h2>
+                                <p><strong>title:</strong> ${d.Title}</p> 
+                                <p><strong>pi:</strong> ${d['Proposal PI']}</p>
+                                <p><strong>sponsor category:</strong> ${d.sponsor_category}</p>
+                                <p><strong>subfield</strong>: ${d['subfield_name']}</p>
+                                <p><strong>amount awarded:</strong> $${d['award_amount']}</p>
+                            `);
+                        }
                     }
                 });
                 
@@ -566,12 +600,12 @@
                 }
             });
 
-            d3.select("label[for='papers']").on("click", function() {
+            d3.select("label[for='publications']").on("click", function() {
                 if (colorMode !== 'research category') return;
-                showPapers = !showPapers;
-                d3.select(this).classed("inactive-text", !showPapers);
+                showPublications = !showPublications;
+                d3.select(this).classed("inactive-text", !showPublications);
     
-                d3.select("#papers").property("checked", showPapers);
+                d3.select("#publications").property("checked", showPublications);
     
                 updateChart(data);
                 render();
@@ -583,6 +617,17 @@
                 d3.select(this).classed("inactive-text", !showProposals);
     
                 d3.select("#proposals").property("checked", showProposals);
+                updateChart(data);
+                render();
+            });
+
+            d3.select("label[for='authors']").on("click", function() {
+                if (colorMode !== 'research category') return;
+                showAuthors = !showAuthors;
+
+                d3.select(this).classed("inactive-text", !showAuthors);
+
+                d3.select("#authors").property("checked", showAuthors);
                 updateChart(data);
                 render();
             });

@@ -4,7 +4,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
     const legend = legendContainer.append("div").attr("class", "legend-items");
 
     if(colorMode === 'research category') {
-        legend.append("p").text("Use checkboxes above to highlight corresponding points").attr("style", "font-size: 14px;");
+        legend.append("p").text("use checkboxes above to highlight corresponding points").attr("style", "font-size: 14px;");
         const groupedCounts = d3.rollup(
             data,
             v => v.length, 
@@ -29,7 +29,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
     }
     else if (colorMode === 'direct sponsor') {
         const noneSelected = highlightedCategories.length === 0;
-        legend.append("p").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
+        legend.append("p").text("click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const filteredDataForLegend = data.filter(d => 
             d.mixed_sponsors_cat !== 'N/A' && 
             d.mixed_sponsors_cat !== null &&
@@ -40,7 +40,6 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
             v => v.length, 
             getSponsorCategory 
         );
-        console.log("Grouped Counts:", groupedCounts);
 
         const sortedCategories = Array.from(groupedCounts, ([category, count]) => ({ category, count }))
             .sort((a, b) => b.count - a.count);
@@ -65,7 +64,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
     }
     else if (colorMode === 'proposal status') {
         const noneSelected = highlightedCategories.length === 0;
-        legend.append("h3").text("Click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
+        legend.append("h3").text("click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const awardCategory = d3.rollup(data, v => v.length, getAwardedStatus);
 
         const sortedAwardCategory = Array.from(awardCategory, ([category, count]) => ({category, count}))
