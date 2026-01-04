@@ -27,12 +27,10 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
             itemDiv.append("span").text(category).style("font-size", "16px");
         });
     }
-    else if (colorMode === 'direct sponsor') {
+    else if (colorMode === 'direct sponsor' || colorMode === 'prime sponsor' || colorMode === 'mixed sponsor') {
         const noneSelected = highlightedCategories.length === 0;
         legend.append("p").text("click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const filteredDataForLegend = data.filter(d => 
-            d.mixed_sponsors_cat !== 'N/A' && 
-            d.mixed_sponsors_cat !== null &&
             d.Type === 'proposal' 
         );
         const groupedCounts = d3.rollup(

@@ -186,14 +186,14 @@
                 </div>
             </div>
             <div id = 'buttons'>
-                <div id = 'kdeplot-button'>
-                    <a href = "kdeplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
-                        <p>density plot</p>
-                    </a>
-                </div>
                 <div id = 'scatterplot-button'>
                     <a href = "scatterplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
                         <p>scatterplot</p>
+                    </a>
+                </div>
+                <div id = 'kdeplot-button'>
+                    <a href = "kdeplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
+                        <p>density plot</p>
                     </a>
                 </div>
                 <div id = 'about-button'>
@@ -231,6 +231,8 @@
                         <select id="color-mode-select">
                             <option value = "research category" selected>research category</option>
                             <option value="direct sponsor">direct sponsor</option>
+                            <option value="prime sponsor">prime sponsor</option>
+                            <option value="mixed sponsor">mixed sponsor</option>
                             <option value="proposal status">proposal status</option>
                             <option value="amount awarded">amount awarded</option>
                         </select>
@@ -242,9 +244,8 @@
             </div>
             <div id = "info" class = "card">
                 <h2>information</h2>
-                <p>click on a point in the scatterplot to see more information about the corresponding proposal.</p>
+                <p>click on a point in the scatterplot to see more information.</p>
                 <p>use mouse scroll to zoom in and out. click and drag to pan.</p>
-                <p>hover over a point to see the proposal title, pi, and direct sponsor category.</p>
             </div>
             
         </div>
@@ -291,46 +292,36 @@
                 .x(d => d.umap_x)
                 .y(d => d.umap_y)
                 .addAll(data);
+            
+            const getTopFive = (colName) => {
+                const counts = d3.rollup(cleanData, v => v.length, d => d[colName]);
+                return Array.from(counts)
+                    .sort((a, b) => b[1] - a[1]) 
+                    .slice(0, 6)               
+                    .map(d => d[0].toLowerCase()); 
+            };
 
-            const getSponsorCategory = (d) => {
-                if (!d['proposal_direct_sponsor_category'] === '') {
-                    return 'missing';
-                }
-                const originalCategory = d['proposal_direct_sponsor_category'].toLowerCase();
-                
-                const foreignCategories = [
-                    'foreign government',
-                    'foreign foundation',
-                    'foreign higher education institutions',
-                    'foreign industry'
-                ];
-                const virginiaCategories = [
-                    'virginia state higher education institutions',
-                    'virginia state agencies'
-                ];
-                const otherCategories = [
-                    'foundation',
-                    'local government',
-                    'other state governments',
-                    'upg',
-                    'mc',
-                    'division',
-                    'institution',
-                    'u.s. higher education institutions'
-                ];
+            const topDirect = getTopFive('proposal_direct_sponsor_category');
+            console.log("Top direct sponsor categories:", topDirect);
+            const topPrime = getTopFive('proposal_prime_sponsor_category');
+            console.log("Top prime sponsor categories:", topPrime);
+            const topMixed = getTopFive('sponsor_category');
 
-                if (foreignCategories.includes(originalCategory)) {
-                    return 'foreign sponsor';
-                }
-                else if (virginiaCategories.includes(originalCategory)) {
-                    return 'virginia state sponsor';
-                }
-                else if (otherCategories.includes(originalCategory)) {
-                    return 'other';
-                }
-                
-                return originalCategory;    
+            const getSponsorCategory = (d, mode = colorMode) => {
+                let targetColumn = "proposal_direct_sponsor_category";
+                let topList = topDirect;
 
+                if (mode === "prime sponsor") {
+                    targetColumn = "proposal_prime_sponsor_category";
+                    topList = topPrime;
+                } else if (mode === "mixed sponsor") {
+                    targetColumn = "sponsor_category";
+                    topList = topMixed;
+                }
+                const value = d[targetColumn].toLowerCase();
+
+                return topList.includes(value) ? value : 'other'   
+                   
             };
 
             const getAwardedStatus = (d) => {
@@ -394,7 +385,8 @@
 
 
             const updateChart = (displayData) => {
-                if (colorMode === "direct sponsor" || colorMode === "proposal status" || colorMode === "amount awarded") {
+                const isSponsorMode = (colorMode === "direct sponsor" || colorMode === "prime sponsor" || colorMode === "mixed sponsor");   
+                if (isSponsorMode || colorMode === "proposal status" || colorMode === "amount awarded") {
                     showPublications = false
                     showAuthors = false;
 
@@ -420,8 +412,8 @@
                         const color = d3.color(colorScale(typeValue));
                         return [color.r / 255, color.g / 255, color.b / 255, 0.8];
                     }
-                    else if (colorMode === 'direct sponsor') {
-                        const category = getSponsorCategory(d);
+                    else if (['direct sponsor', 'prime sponsor', 'mixed sponsor'].includes(colorMode)) {
+                        const category = getSponsorCategory(d, colorMode);
                         const color = d3.color(categoryColorScale(category));
                         return [color.r / 255, color.g / 255, color.b / 255, 0.94]; 
                     }
@@ -487,8 +479,8 @@
                 let displayData = data;
 
                 if (highlightedCategories.length > 0) {
-                    if (colorMode === 'direct sponsor') {
-                        displayData = displayData.filter(d => highlightedCategories.includes(getSponsorCategory(d)));
+                    if (['direct sponsor', 'prime sponsor', 'mixed sponsor'].includes(colorMode)) {
+                        displayData = displayData.filter(d => highlightedCategories.includes(getSponsorCategory(d, colorMode)));
                     }
                     else if (colorMode === 'proposal status') {
                         displayData = displayData.filter(d => highlightedCategories.includes(getAwardedStatus(d)));
