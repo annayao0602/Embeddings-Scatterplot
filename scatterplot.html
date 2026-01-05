@@ -296,8 +296,9 @@
             const getTopFive = (colName) => {
                 const counts = d3.rollup(cleanData, v => v.length, d => d[colName]);
                 return Array.from(counts)
+                    .filter(d => d[0] && d[0].toLowerCase() !== 'na' && d[0] !== '')
                     .sort((a, b) => b[1] - a[1]) 
-                    .slice(0, 6)               
+                    .slice(0, 5)               
                     .map(d => d[0].toLowerCase()); 
             };
 
@@ -306,6 +307,7 @@
             const topPrime = getTopFive('proposal_prime_sponsor_category');
             console.log("Top prime sponsor categories:", topPrime);
             const topMixed = getTopFive('sponsor_category');
+
 
             const getSponsorCategory = (d, mode = colorMode) => {
                 let targetColumn = "proposal_direct_sponsor_category";
@@ -318,7 +320,11 @@
                     targetColumn = "sponsor_category";
                     topList = topMixed;
                 }
-                const value = d[targetColumn].toLowerCase();
+                const value = d[targetColumn] ? d[targetColumn].toLowerCase() : 'na';
+
+                if (value === 'na' || value === '') {
+                    return 'missing';
+                }
 
                 return topList.includes(value) ? value : 'other'   
                    
@@ -414,6 +420,9 @@
                     }
                     else if (['direct sponsor', 'prime sponsor', 'mixed sponsor'].includes(colorMode)) {
                         const category = getSponsorCategory(d, colorMode);
+                        if (category === 'missing') {
+                            return [0.8, 0.8, 0.8, 1.0]; 
+                        }
                         const color = d3.color(categoryColorScale(category));
                         return [color.r / 255, color.g / 255, color.b / 255, 0.94]; 
                     }
@@ -494,6 +503,27 @@
                     return true;
                 });
 
+                displayData.sort((a, b) => { //draw points with missing values first
+                    const isSponsorMode = (colorMode === "direct sponsor" || colorMode === "prime sponsor" || colorMode === "mixed sponsor");
+                    if(isSponsorMode) {
+                        const catA = getSponsorCategory(a, colorMode);
+                        const catB = getSponsorCategory(b, colorMode);
+                        if (catA === 'missing' && catB !== 'missing') return -1;
+                        if (catA !== 'missing' && catB === 'missing') return 1;
+                    }
+                    //draw authors last
+                    const typeWeights = {
+                        'publication': 0,
+                        'proposal': 1,
+                        'author': 2
+                    };
+                    const weightA = typeWeights[a.Type.toLowerCase()] || 0;
+                    const weightB = typeWeights[b.Type.toLowerCase()] || 0;
+
+                    return weightA - weightB;
+                    
+                });
+
                 fillColor.data(displayData);  
  
                 updateChart(displayData);   
@@ -557,19 +587,31 @@
                         const d = highlightData[0];
                         if (d.Type === 'author') {
                             d3.select("#info").html(`
-                                <h2>information</h2>
+                                <h2>author information</h2>
                                 <p><strong>author:</strong> ${d.authorName}</p> 
                                 <p><strong>department:</strong> ${d['department']}</p>
                             `);                        
                         }
-                        else {
+                        else if ( d.Type === 'proposal') {
                             d3.select("#info").html(`
-                                <h2>information</h2>
+                                <h2>proposal information</h2>
                                 <p><strong>title:</strong> ${d.Title}</p> 
                                 <p><strong>pi:</strong> ${d['Proposal PI']}</p>
+                                <p><strong>direct sponsor category:</strong> ${d['proposal_direct_sponsor_category']}</p>
+                                <p><strong>prime sponsor category:</strong> ${d['proposal_prime_sponsor_category']}</p>
                                 <p><strong>sponsor category:</strong> ${d.sponsor_category}</p>
-                                <p><strong>subfield</strong>: ${d['subfield_name']}</p>
+                                <p><strong>subfield:</strong>: ${d['subfield_name']}</p>
+                                <p><strong>field:</strong> ${d['field_name']}</p>
                                 <p><strong>amount awarded:</strong> $${d['award_amount']}</p>
+                            `);
+                        }
+                        else {
+                            d3.select("#info").html(`
+                                <h2>publication information</h2>
+                                <p><strong>title:</strong> ${d.Title}</p> 
+                                <p><strong>pi:</strong> ${d['Proposal PI']}</p>
+                                <p><strong>subfield:</strong>: ${d['subfield_name']}</p>
+                                <p><strong>field:</strong> ${d['field_name']}</p>
                             `);
                         }
                     }

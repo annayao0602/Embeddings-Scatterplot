@@ -31,21 +31,27 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
         const noneSelected = highlightedCategories.length === 0;
         legend.append("p").text("click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
         const filteredDataForLegend = data.filter(d => 
-            d.Type === 'proposal' 
+            d.Type === 'proposal'
         );
         const groupedCounts = d3.rollup(
             filteredDataForLegend,
             v => v.length, 
-            getSponsorCategory 
+            d => getSponsorCategory(d, colorMode)
         );
 
         const sortedCategories = Array.from(groupedCounts, ([category, count]) => ({ category, count }))
-            .sort((a, b) => b.count - a.count);
+            .sort((a, b) => {
+                if (a.category === 'missing') return 1;
+                if (b.category === 'missing') return -1;
+                if (a.category === 'other') return 1;
+                if (b.category === 'other') return -1;
+                return b.count - a.count;
+            });
         
         sortedCategories.forEach(item => {
             const category = item.category;
             const isActive = highlightedCategories.includes(category);
-            const color = categoryColorScale(category);
+            const color = category === 'missing' ? '#abababff' : categoryColorScale(category);
             const itemDiv = legend.append("div")
                 .style("display", "flex")
                 .style("align-items", "center")
