@@ -1,4 +1,4 @@
-export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStatus, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight) => {
+export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStatus, getFieldCategory, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight) => {
     const legendContainer = d3.select("#legend");
     legendContainer.select(".legend-items").remove();
     const legend = legendContainer.append("div").attr("class", "legend-items");
@@ -72,7 +72,11 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
         const awardCategory = d3.rollup(data, v => v.length, getAwardedStatus);
 
         const sortedAwardCategory = Array.from(awardCategory, ([category, count]) => ({category, count}))
-            .sort((a,b) => b.count - a.count);
+            .sort((a,b) => {
+                if (a.category === 'other') return 1;
+                if (b.category === 'other') return -1;
+                return b.count - a.count;
+            });
 
         sortedAwardCategory.forEach(item => {
             const category = item.category;
@@ -162,5 +166,44 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
 
         legendSvg.append("line").attr("x1", 0).attr("y1", 20).attr("x2", 0).attr("y2", 25).attr("stroke", "#333").attr("stroke-width", 1);
         legendSvg.append("line").attr("x1", 500).attr("y1", 20).attr("x2", 500).attr("y2", 25).attr("stroke", "#333").attr("stroke-width", 1);
+    }
+    else if (colorMode === 'field') {
+        const noneSelected = highlightedCategories.length === 0;
+        legend.append("h3").text("click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
+        
+        const fieldData = data.filter(d => d.Type !== 'author');
+
+        const groupedCounts = d3.rollup(
+            fieldData,
+            v => v.length, 
+            d => getFieldCategory(d)
+        );
+
+        const sortedCategories = Array.from(groupedCounts, ([category, count]) => ({ category, count }))
+            .sort((a, b) => {
+                if (a.category === 'missing') return 1;
+                if (b.category === 'missing') return -1;
+                if (a.category === 'other') return 1;
+                if (b.category === 'other') return -1;
+                return b.count - a.count;
+            });
+        
+        sortedCategories.forEach(item => {
+            const category = item.category;
+            const isActive = highlightedCategories.includes(category);
+            const color = categoryColorScale(category);
+            const itemDiv = legend.append("div")
+                .style("display", "flex")
+                .style("align-items", "center")
+                .style("margin-bottom", "5px")
+                .style("cursor", "pointer")
+                .on("click", () => toggleCategoryHighlight(category));
+            if (!noneSelected) {
+                itemDiv.attr("class", `legend-item ${!isActive ? 'inactive-highlight' : ''}`)
+            }
+
+            itemDiv.append("div").style("width", "12px").style("height", "12px").style("background-color", color).style("margin-right", "10px").style("opacity", "0.94");
+            itemDiv.append("span").text(category).style("font-size", "16px");
+        });
     }
 };
