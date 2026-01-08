@@ -311,7 +311,7 @@
             const topDirect = getTop('proposal_direct_sponsor_category',5);
             const topPrime = getTop('proposal_prime_sponsor_category',5);
             const topMixed = getTop('sponsor_category',5);
-            const topFields = getTop('field_name', 6);
+            const topFields = getTop('field_name', 10);
 
             const getSponsorCategory = (d, mode = colorMode) => {
                 let targetColumn = "proposal_direct_sponsor_category";
@@ -347,6 +347,13 @@
 
             const getFieldCategory = (d) => {
                 const value = d['field_name'] ? d['field_name'].toLowerCase() : 'na';
+
+                if(value.includes('Economics, Econometrics and Finance'.toLowerCase())) {
+                    return 'Economics, Econometrics and Finance'.toLowerCase();
+                }
+                if(value.includes('health professions')) {
+                    return 'other';
+                }
 
                 return topFields.includes(value) ? value : 'other'   
             };
@@ -477,6 +484,9 @@
                     }
                     else if (colorMode === 'field') {
                         const fieldCat = getFieldCategory(d);
+                        if (fieldCat === 'other') {
+                            return [0.8, 0.8, 0.8, 1.0]; 
+                        }
                     
                         const color = d3.color(categoryColorScale(fieldCat));
                         return [color.r / 255, color.g / 255, color.b / 255, 0.94]; 
@@ -672,14 +682,14 @@
                             tooltip.style("opacity", 0.9);
                             if(closest.Type === "author") {
                                 tooltip.html(
-                                `<strong>author</strong>: ${closest.authorName} <br> 
+                                `<strong> ${closest.authorName} </strong> <br> 
                                 `)
                                     .style("left", (event.pageX + 15) + "px")
                                     .style("top", (event.pageY - 20) + "px");
                             }
                             else {
                                 tooltip.html(
-                                `<strong>title</strong>: ${closest.Title} <br> 
+                                `<strong> ${closest.Title} </strong> <br> <br>
                                 <strong>pi</strong>: ${closest['Proposal PI']} <br>
                                 <strong>subfield</strong>: ${closest['subfield_name']}
                                 `)

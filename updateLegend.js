@@ -191,7 +191,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
         sortedCategories.forEach(item => {
             const category = item.category;
             const isActive = highlightedCategories.includes(category);
-            const color = categoryColorScale(category);
+            const color = category === 'other' ? '#abababff' : categoryColorScale(category);
             const itemDiv = legend.append("div")
                 .style("display", "flex")
                 .style("align-items", "center")
