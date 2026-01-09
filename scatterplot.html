@@ -47,7 +47,6 @@
         padding: 0px;
         min-height:0;
         font-family: 'Inria Serif';
-        border-radius: 15px;
     }
     .scatter_container {
         display: flex;
@@ -56,8 +55,9 @@
     }
     #panel {
         width: 40%;
-        height: 100vh;
+        max-height: 100vh;
         display: flex;
+        overflow: hidden;
         flex-direction: column;
         gap: 10px;
         padding: 10px;
@@ -172,6 +172,20 @@
         opacity: 0.7;
         cursor: pointer;
     }
+    #legend {
+        flex-shrink: 0; 
+        max-height: 30vh; 
+        overflow-y: auto;
+    }
+
+    #info {
+        flex: 1; 
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; 
+        min-height: 0; 
+    }
+
 
 </style>
 <body>
@@ -245,10 +259,9 @@
                 </div>
             </div>
             <div id = "legend" class = "card">
-                <h2>legend</h2>
+                
             </div>
             <div id = "info" class = "card">
-                <h2>information</h2>
                 <p>click on a point in the scatterplot to see more information.</p>
                 <p>use mouse scroll to zoom in and out. click and drag to pan.</p>
             </div>
@@ -269,6 +282,7 @@
                     umap_x: parseFloat(d.umap_x),
                     umap_y: parseFloat(d.umap_y),
                     Type: d.Type,
+                    PI: d['Proposal PI'] || 'NA',
                     proposal_status: d['Proposal Status'] || 'NA',
                     award_amount: +d.award_amount || 0,
                     sponsor: d.sponsor || 'NA',
@@ -689,9 +703,17 @@
                             }
                             else {
                                 tooltip.html(
-                                `<strong> ${closest.Title} </strong> <br> <br>
-                                <strong>pi</strong>: ${closest['Proposal PI']} <br>
-                                <strong>subfield</strong>: ${closest['subfield_name']}
+                                `
+                                <div style="font-size: 0.8em; margin-bottom: 4px;">
+                                    ${closest.field_name} &middot; ${closest.subfield_name}
+                                </div>
+                                <h3 style="margin: 0; line-height: 1.2; font-size: 0.9em;">
+                                    ${closest.Title}
+                                </h3>
+                                <p style="margin-top: 4px; font-size: 0.8em; color: #444;">
+                                    <strong>${closest.PI}</strong>
+                                </p>
+                                
                                 `)
                                     .style("left", (event.pageX + 15) + "px")
                                     .style("top", (event.pageY - 20) + "px");
@@ -711,32 +733,98 @@
                 plotArea.on('click', () => {
                     if (highlightData.length > 0) {
                         const d = highlightData[0];
+                        const piName = d['Proposal PI'] || 'NA';
+                        const fullAuthorList = d['AuthorName'] || "";
+
+                        const otherAuthorsArr = fullAuthorList
+                            .split(',')
+                            .map(name => name.trim())
+                            .filter(name => name !== piName && name !== "");
+
+                        const fullOtherAuthors = otherAuthorsArr.join(', ').replace(/'/g, "\\'");
+                        const charLimit = 200;
+                        const needsTruncation = fullOtherAuthors.length > charLimit;
+                        const shortAuthors = needsTruncation 
+                            ? fullOtherAuthors.substring(0, charLimit).replace(/'/g, "\\'") 
+                            : fullOtherAuthors;
+
+                        const formattedAmount = Number(d['award_amount']).toLocaleString('en-US', {
+                            style: 'currency',
+                            currency: 'USD',
+                            maximumFractionDigits: 0
+                        });
                         if (d.Type === 'author') {
                             d3.select("#info").html(`
-                                <h2>author information</h2>
-                                <p><strong>author:</strong> ${d.authorName}</p> 
-                                <p><strong>department:</strong> ${d['department']}</p>
+                                <hr style="border: 0; border-top: 1px solid #eee; margin: 12px 0;">
+                                <h3 style="margin: 0; line-height: 1.2; font-size: 1.2em;">
+                                    <strong>${d.authorName}</strong>
+                                </h3> 
+                                <p style="margin-top: 4px; margin-bottom: 12px; font-size: 0.97em; color: #444;">
+                                    ${d['department']}
+                                </p>
                             `);                        
                         }
                         else if ( d.Type === 'proposal') {
+                            const authorSuffix = otherAuthorsArr.length > 0 ? `, ${fullOtherAuthors}` : "";
                             d3.select("#info").html(`
-                                <h2>proposal information</h2>
-                                <p><strong>title:</strong> ${d.Title}</p> 
-                                <p><strong>pi:</strong> ${d['Proposal PI']}</p>
-                                <p><strong>direct sponsor category:</strong> ${d['proposal_direct_sponsor_category']}</p>
-                                <p><strong>prime sponsor category:</strong> ${d['proposal_prime_sponsor_category']}</p>
-                                <p><strong>sponsor category:</strong> ${d.sponsor_category}</p>
-                                <p><strong>field:</strong> ${d['field_name']}</p> 
-                                <p><strong>amount awarded:</strong> $${d['award_amount']}</p>
+                                <hr style="border: 0; border-top: 1px solid #eee; margin: 12px 0;">
+                                <div style="font-size: 0.75em; letter-spacing: 1px; margin-bottom: 4px;">
+                                    ${d.field_name} &middot; ${d.subfield_name}
+                                </div>
+                                <h3 style="margin: 0; line-height: 1.2; font-size: 1.2em;">
+                                    ${d.Title}
+                                </h3>
+                                <p style="margin-top: 4px; margin-bottom: 12px; font-size: 0.97em; color: #444;">
+                                    <strong>${piName}</strong> <span style="font-size: 0.95em; color: #888;">(PI)</span>${authorSuffix}
+                                </p>
+                                <div style="font-size: 0.9em; line-height: 1.6;">
+                                    <div style="margin-bottom: 4px;">
+                                        <span>Sponsor:</span> ${d.sponsor_category} 
+                                        <span style="margin: 0 8px;">|</span> 
+                                        <span>Direct:</span> ${d['proposal_direct_sponsor_category']}
+                                        <span style="margin: 0 8px;">|</span> 
+                                        <span>Prime:</span> ${d['proposal_prime_sponsor_category']}
+                                    </div>
+                                </div>
+
+                                <div style="margin-top: 10px; font-size: 0.9em;">
+                                    Awarded: ${formattedAmount}
+                                </div>
                             `);
                         }
                         else {
                             d3.select("#info").html(`
-                                <h2>publication information</h2>
-                                <p><strong>title:</strong> ${d.Title}</p> 
-                                <p><strong>pi:</strong> ${d['Proposal PI']}</p>
-                                <p><strong>subfield:</strong> ${d['subfield_name']}</p>
-                                <p><strong>field:</strong> ${d['field_name']}</p>
+                                <hr style="border: 0; border-top: 1px solid #eee; margin: 12px 0;">
+                                <div style="font-size: 0.75em; letter-spacing: 1px; margin-bottom: 4px;">
+                                    ${d.field_name} &middot; ${d.subfield_name}
+                                </div>
+                                <h3 style="margin: 0; line-height: 1.2; font-size: 1.2em;">
+                                    ${d.Title}
+                                </h3>
+                                <div style="flex:1; min-height: 0; overflow-y: auto; margin-top: 4px; margin-bottom: 150px; border-bottom: 1px solid #eee;">
+                                    <div style="margin-top: 4px; margin-bottom: 12px; font-size: 0.95em; color: #444; line-height: 1.4;">
+                                        <strong>${piName}</strong> <span style="font-size: 0.85em; color: #888;">(PI)</span>${otherAuthorsArr.length > 0 ? ', ' : ''}
+                                        
+                                        <span id="author-text">${shortAuthors}</span>
+                                        
+                                        ${needsTruncation ? `
+                                            <span id="toggle-btn" 
+                                                style="color: #007bff; cursor: pointer; font-weight: bold; margin-left: 5px; text-decoration: underline;" 
+                                                onclick="
+                                                    const textSpan = document.getElementById('author-text');
+                                                    if (this.innerText === '(show more)') {
+                                                        textSpan.innerText = '${fullOtherAuthors}';
+                                                        this.innerText = ' (show less)';
+                                                    } else {
+                                                        textSpan.innerText = '${shortAuthors}';
+                                                        this.innerText = ' (show more)';
+                                                    }
+                                                ">
+                                                (show more)
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                </div>
                             `);
                         }
                     }
