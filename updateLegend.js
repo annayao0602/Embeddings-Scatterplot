@@ -169,7 +169,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
     }
     else if (colorMode === 'field') {
         const noneSelected = highlightedCategories.length === 0;
-        legend.append("h3").text("click on a category to highlight corresponding points.").attr("style", "font-size: 14px;");
+        legend.append("h3").text("click on a category to highlight corresponding points. scroll for more.").attr("style", "font-size: 14px;");
         
         const fieldData = data.filter(d => d.Type !== 'author');
 

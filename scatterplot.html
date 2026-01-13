@@ -185,6 +185,13 @@
         overflow: hidden; 
         min-height: 0; 
     }
+    #search {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 0px;
+    }
 
 
 </style>
@@ -254,8 +261,13 @@
                     </div>
                 </div>
                 <br>
-                <div id = "search bar">
-                    <input type = "text" id="search-input" placeholder="search by title, pi, or author name" style="width: 70%; padding: 8px; margin-top: 7px; box-sizing: border-box; font-family: 'Inria Serif'; color: #002E63;">
+                <div id = "search">
+                    <div id = "search bar">
+                        <input type = "text" id="search-input" placeholder="search by title, pi, or author name" style="width: 275px; padding: 8px; margin-top: 7px; margin-right: 0px; box-sizing: border-box; font-family: 'Inria Serif'; color: #002E63;">
+                    </div>
+                    <div id = "clear">
+                        <a href="#" id="clear-search" style="font-family: 'Inria Serif'; font-size: 14px; margin-left: 8px; color: #002E63; text-decoration: none;">clear search</a>
+                    </div>
                 </div>
             </div>
             <div id = "legend" class = "card">
@@ -276,6 +288,7 @@
         let quadtree;
 
         d3.csv("pub_prop_author.csv").then(function(rawData) {
+            //map and filter data
             const cleanData = rawData.map(d => {
                 return {
                     ...d,
@@ -296,17 +309,7 @@
                 };
             }).filter(d => !isNaN(d.umap_x) && !isNaN(d.umap_y));
 
-            console.log("Data breakdown:", d3.rollup(cleanData, v => v.length, d => d.Type));
-            console.log(cleanData);
-
             const data = cleanData;           
-                
-            const categoryCounts = d3.rollup(
-                data, 
-                v => v.length, 
-                d => d.proposal_direct_sponsor_category
-            );
-            console.log("Category counts:", categoryCounts);
 
             quadtree = d3.quadtree()
                 .x(d => d.umap_x)
@@ -314,7 +317,7 @@
                 .addAll(data);
             
             const getTop = (colName, i) => {
-                const counts = d3.rollup(cleanData, v => v.length, d => d[colName]);
+                const counts = d3.rollup(data, v => v.length, d => d[colName]);
                 return Array.from(counts)
                     .filter(d => d[0] && d[0].toLowerCase() !== 'na' && d[0] !== '')
                     .sort((a, b) => b[1] - a[1]) 
@@ -390,6 +393,7 @@
             let searchTerm = "";
 
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
+            const clearButton = d3.select("#clear-search");
 
             const colorScale = d3.scaleOrdinal()
                 .domain([0, 1, 2]) 
@@ -649,6 +653,25 @@
                     .call(chart);
             };
 
+            const clear = (search = false, legend = false) => {
+                if(search) {
+                    const searchInput = d3.select("#search-input");
+                    searchInput.property("value", "");
+                    searchTerm = "";
+                }
+                if(legend) {
+                    highlightedCategories = [];
+                }
+                updateChart(data);
+                updateLegend(data, colorMode, getSponsorCategory, getAwardedStatus, getFieldCategory, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
+                render();
+            }
+
+            clearButton.on("click", (event) => {
+                event.preventDefault();
+                clear(true, false); 
+            });
+
             function attachListeners() {
                 const plotArea = d3.select('#my_scatter d3fc-svg.plot-area');
                 plotArea.style('pointer-events', 'all');
@@ -801,7 +824,7 @@
                                 <h3 style="margin: 0; line-height: 1.2; font-size: 1.2em;">
                                     ${d.Title}
                                 </h3>
-                                <div style="flex:1; min-height: 0; overflow-y: auto; margin-top: 4px; margin-bottom: 150px; border-bottom: 1px solid #eee;">
+                                <div style="flex:1; min-height: 0; overflow-y: auto; margin-top: 4px; margin-bottom: 180px; border-bottom: 1px solid #eee;">
                                     <div style="margin-top: 4px; margin-bottom: 12px; font-size: 0.95em; color: #444; line-height: 1.4;">
                                         <strong>${piName}</strong> <span style="font-size: 0.85em; color: #888;">(PI)</span>${otherAuthorsArr.length > 0 ? ', ' : ''}
                                         
