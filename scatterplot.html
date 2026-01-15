@@ -193,6 +193,25 @@
         align-items: center;
         padding: 0px;
     }
+    .ego_network_toggle {
+        position: absolute;
+        bottom: 50px;
+        right: 250px;
+        cursor: pointer;
+        z-index: 1000;
+    }
+    .ego_label {
+        cursor: pointer !important;
+        padding: 5px;
+
+    }
+    .ego_network_toggle:hover {
+        scale: 1.1;
+        cursor: pointer;
+        background-color: #d6d6d6;
+        transition: background-color 0.3s ease-in-out;
+
+    }
 
 
 </style>
@@ -264,7 +283,7 @@
                 <br>
                 <div id = "search">
                     <div id = "search bar">
-                        <input type = "text" id="search-input" placeholder="search by title, pi, or author name" style="width: 275px; padding: 8px; margin-top: 7px; margin-right: 0px; box-sizing: border-box; font-family: 'Inria Serif'; color: #002E63;">
+                        <input type = "text" id="search-input" placeholder="search by title, pi, or author name" style="width: 300px; padding: 8px; margin-top: 7px; margin-right: 0px; box-sizing: border-box; font-family: 'Inria Serif'; color: #002E63;">
                     </div>
                     <div id = "clear">
                         <a href="#" id="clear-search" style="font-family: 'Inria Serif'; font-size: 14px; margin-left: 8px; color: #002E63; text-decoration: none;">clear search</a>
@@ -274,11 +293,18 @@
             <div id = "legend" class = "card">
                 
             </div>
-            <div id = "info" class = "card">
-                <p>click on a point in the scatterplot to see more information.</p>
-                <p>use mouse scroll to zoom in and out. click and drag to pan.</p>
+            <div id = info-card>
+                <div id = info-holder>
+                    <div id = "info" class = "card">
+                        <p>click on a point in the scatterplot to see more information.
+                        use mouse scroll to zoom in and out. click and drag to pan.</p>
+                    </div>
+                </div>
+                <div class = "ego_network_toggle">
+                    <input type="checkbox" id="ego" checked style="display: none;">
+                    <label for="ego" class="ego-label"></label>
+                </div> 
             </div>
-            
         </div>
     </div>
 
@@ -392,6 +418,8 @@
             let colorMode = 'research category';
             let highlightedCategories = [];
             let searchTerm = "";
+            let egoMode = false;
+            let egoAnchor = null;
 
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
             const clearButton = d3.select("#clear-search");
@@ -436,6 +464,22 @@
                 return title.includes(searchTerm) || pi.includes(searchTerm) || author.includes(searchTerm);
             }
 
+            const isPartofEgoNetwork = (d) => {
+                if (!egoAnchor) return false;
+                
+                if (d === egoAnchor) return true;
+
+                if (d.Type === 'author') {
+                    if (!egoAnchor.authorName) return false;
+
+                    const anchorAuthors = egoAnchor.authorName.toLowerCase().split(',').map(name => name.trim());
+
+                    return anchorAuthors.includes(d.authorName.toLowerCase());
+                }
+                return false;
+
+            }
+
             const updateChart = (displayData) => {
                 const isSponsorMode = (colorMode === "direct sponsor" || colorMode === "prime sponsor" || colorMode === "mixed sponsor");   
                 if (isSponsorMode || colorMode === "proposal status" || colorMode === "amount awarded") {
@@ -466,6 +510,11 @@
                 }
             
                 fillColor.value(d => {
+                    if(egoMode) {
+                        if(!isPartofEgoNetwork(d)) {
+                            return [0.8, 0.8, 0.8, 0.2]; 
+                        }
+                    }
                     const isMatch = matchesSearch(d);
                     
                     if(searchTerm !== '' && !isMatch) {
@@ -573,6 +622,7 @@
                 
 
                 displayData = displayData.filter(d => {
+                    if (egoMode && isPartofEgoNetwork(d)) return true;
                     if (d.Type === 'proposal' && !showProposals) return false;
                     if (d.Type === 'publication' && !showPublications) return false;
                     if (d.Type === 'author' && !showAuthors) return false;
@@ -615,6 +665,13 @@
                         if (catA === 'missing' && catB !== 'missing') return -1;
                         if (catA !== 'missing' && catB === 'missing') return 1;
                     }
+                    if (egoMode) {
+                        const aIn = isPartofEgoNetwork(a);
+                        const bIn = isPartofEgoNetwork(b);
+                        if (!aIn && bIn) return -1; 
+                        if (aIn && !bIn) return 1; 
+                    }
+
                     if(colorMode === 'proposal status') {
                         const statusA = getAwardedStatus(a);
                         const statusB = getAwardedStatus(b);
@@ -684,7 +741,11 @@
                     const xVal = x.invert(mouseX);
                     const yVal = y.invert(mouseY);
 
-                    const closest = quadtree.find(xVal, yVal, 1);
+                    let closest = quadtree.find(xVal, yVal, 1);
+
+                    if (egoMode && closest && !isPartofEgoNetwork(closest)) {
+                        closest = null;
+                    }
 
                     if (closest !== lastClosest) {
                         lastClosest = closest;
@@ -757,8 +818,33 @@
                 plotArea.on('click', () => {
                     if (highlightData.length > 0) {
                         const d = highlightData[0];
+                        if (d.Type === 'publication' || d.Type === 'proposal') {
+                            egoAnchor = d;
+                            if(egoMode) {
+                                updateChart(data);
+                                render();
+                            }
+                            else {
+                                d3.select("label[for='ego']").text(" show ego network");
+                                d3.select(".ego_network_toggle")
+                                    .style("opacity", "1")
+                                    .style("pointer-events", "all");
+                            }
+                            
+                        } else {
+                            if (egoMode) {
+                                d3.select(".ego_network_toggle")
+                                    .style("opacity", "1")
+                                    .style("pointer-events", "all");
+                            } else {
+                            d3.select(".ego_network_toggle")
+                                .style("opacity", "0")
+                                .style("pointer-events", "none");
+                        }
+                    }
+                        
                         const piName = d['Proposal PI'] || 'NA';
-                        const fullAuthorList = d['AuthorName'] || "";
+                        const fullAuthorList = d.authorName || "";
 
                         const otherAuthorsArr = fullAuthorList
                             .split(',')
@@ -825,7 +911,7 @@
                                 <h3 style="margin: 0; line-height: 1.2; font-size: 1.2em;">
                                     ${d.Title}
                                 </h3>
-                                <div style="flex:0 1 auto; min-height: 0; overflow-y: auto; margin-top: 4px; border-bottom: 1px solid #eee;">
+                                <div style="flex: 1; min-height: 0; max-height: 100px; overflow-y: auto; margin-bottom: 180px; margin-top: 4px; border-bottom: 1px solid #eee;">
                                     <div style="margin-top: 4px; margin-bottom: 12px; font-size: 0.95em; color: #444; line-height: 1.4;">
                                         <strong>${piName}</strong> <span style="font-size: 0.85em; color: #888;">(PI)</span>${otherAuthorsArr.length > 0 ? ', ' : ''}
                                         
@@ -899,6 +985,25 @@
 
                 d3.select("#authors").property("checked", showAuthors);
                 updateChart(data);
+                render();
+            });
+
+            d3.select("label[for='ego']").on("click", function() {
+                egoMode = !egoMode;
+
+                if (egoMode) {
+                    d3.select(this).text(" hide ego network");
+                    clear(true, true);
+                    showAuthors = true;
+                    d3.select("#authors").property("checked", true);
+                    d3.select("label[for='authors']").classed("inactive-text", false);
+                    
+                } else {
+                    d3.select(this).text(" show ego network");
+                }
+
+                updateChart(data);
+                updateLegend(data, colorMode, getSponsorCategory, getAwardedStatus, getFieldCategory, colorScale, categoryColorScale, statusColorScale, amountColorScale, amountExtent, highlightedCategories, toggleCategoryHighlight);
                 render();
             });
 
