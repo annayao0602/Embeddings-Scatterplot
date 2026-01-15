@@ -373,7 +373,7 @@
 
             if(selected_metric == "density") {
                 sliderText.text("density bandwidth:");
-                metricDescription.text("the kde (kernel density) plot visualizes the density of data points in the space. the darker areas indicate a higher concentration of proposals, while lighter areas indicate a lower concentration. adjusting the bandwidth will change the smoothness of the density estimation.");
+                metricDescription.text("the kde (kernel density) plot visualizes the density of data points in the space. the darker areas indicate a higher concentration of points, while lighter areas indicate a lower concentration. adjusting the bandwidth will change the smoothness of the density estimation.");
                 plotType.text("density plot");
 
                 let contours = d3.contourDensity()
