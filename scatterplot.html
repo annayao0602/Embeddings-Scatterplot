@@ -532,7 +532,7 @@
                 fillColor.value(d => {
                     if(egoMode) {
                         if(!isPartofEgoNetwork(d)) {
-                            return [0.8, 0.8, 0.8, 0.2]; 
+                            return [0.8, 0.8, 0.8, 0.7]; 
                         }
                     }
                     const isMatch = matchesSearch(d);
@@ -584,7 +584,7 @@
 
             const scatter = fc.seriesWebglPoint()
                     .type(d3.symbolCircle)
-                    .size(50)
+                    .size(d => (egoMode && d === egoAnchor) ? 130 : 40)
                     .xScale(x)
                     .yScale(y)
                     .crossValue(d => d.umap_x)
@@ -592,7 +592,6 @@
                     .decorate(program => {
                         fillColor(program);
                         const context = program.context();
-                        context.enable(context.BLEND);
                         context.blendFunc(context.SRC_ALPHA, context.ONE_MINUS_SRC_ALPHA);
                     });
 
@@ -642,9 +641,7 @@
                 
 
                 displayData = displayData.filter(d => {
-                    if (egoMode && isPartofEgoNetwork(d)) {
-                        return true;
-                    }
+                    
                     if (d.Type === 'proposal' && !showProposals) return false;
                     if (d.Type === 'publication' && !showPublications) return false;
                     if (d.Type === 'author' && !showAuthors) return false;
@@ -658,6 +655,10 @@
                 const interactiveData = displayData.filter(d => {
                     // Must match search
                     if (searchTerm !== "" && !d._isMatch) return false;
+
+                    if (egoMode) {
+                        return isPartofEgoNetwork(d); 
+                    }
                     
                     // Must match category highlights if any are active
                     if (highlightedCategories.length > 0) {
@@ -763,7 +764,12 @@
                     const xVal = x.invert(mouseX);
                     const yVal = y.invert(mouseY);
 
-                    let closest = quadtree.find(xVal, yVal, 1);
+                    const pixelRadius = 20;
+                    const xRadius = Math.abs(x.invert(mouseX) - x.invert(mouseX + pixelRadius));
+                    const yRadius = Math.abs(y.invert(mouseY) - y.invert(mouseY + pixelRadius));
+                    const searchRadius = Math.max(xRadius, yRadius);
+
+                    let closest = quadtree.find(xVal, yVal, searchRadius);
 
                     if (egoMode && closest && !isPartofEgoNetwork(closest)) {
                         closest = null;
