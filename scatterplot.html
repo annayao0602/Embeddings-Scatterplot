@@ -420,6 +420,7 @@
             let searchTerm = "";
             let egoMode = false;
             let egoAnchor = null;
+            let networkSet = new Set();
 
             const tooltip = d3.select("body").append("div").attr("class", "tooltip");
             const clearButton = d3.select("#clear-search");
@@ -463,22 +464,41 @@
                 const author = d.authorName ? d.authorName.toLowerCase() : '';
                 return title.includes(searchTerm) || pi.includes(searchTerm) || author.includes(searchTerm);
             }
+            const rebuildNetworkSet = () => {
+                networkSet.clear();
+                if (!egoAnchor) return;
+
+                if (egoAnchor.Type === 'author') {
+                    const targetName = egoAnchor.authorName.toLowerCase();
+                    
+                    data.forEach(d => {
+                        if ((d.Type === 'proposal' || d.Type === 'publication') && 
+                            d.authorName && 
+                            d.authorName.toLowerCase().includes(targetName)) {
+                            
+                            d.authorName.split(',').forEach(name => {
+                                networkSet.add(name.trim().toLowerCase());
+                            });
+                        }
+                        console.log(networkSet);
+                    });
+                } 
+                else if (egoAnchor.authorName) {
+                    egoAnchor.authorName.split(',').forEach(name => {
+                        networkSet.add(name.trim().toLowerCase());
+                    });
+                }
+            };
 
             const isPartofEgoNetwork = (d) => {
                 if (!egoAnchor) return false;
-                
                 if (d === egoAnchor) return true;
 
-                if (d.Type === 'author') {
-                    if (!egoAnchor.authorName) return false;
-
-                    const anchorAuthors = egoAnchor.authorName.toLowerCase().split(',').map(name => name.trim());
-
-                    return anchorAuthors.includes(d.authorName.toLowerCase());
+                if (d.Type !== 'author') {
+                    return false;
                 }
-                return false;
-
-            }
+                return networkSet.has(d.authorName.toLowerCase());
+            };
 
             const updateChart = (displayData) => {
                 const isSponsorMode = (colorMode === "direct sponsor" || colorMode === "prime sponsor" || colorMode === "mixed sponsor");   
@@ -622,7 +642,9 @@
                 
 
                 displayData = displayData.filter(d => {
-                    if (egoMode && isPartofEgoNetwork(d)) return true;
+                    if (egoMode && isPartofEgoNetwork(d)) {
+                        return true;
+                    }
                     if (d.Type === 'proposal' && !showProposals) return false;
                     if (d.Type === 'publication' && !showPublications) return false;
                     if (d.Type === 'author' && !showAuthors) return false;
@@ -818,30 +840,26 @@
                 plotArea.on('click', () => {
                     if (highlightData.length > 0) {
                         const d = highlightData[0];
-                        if (d.Type === 'publication' || d.Type === 'proposal') {
-                            egoAnchor = d;
-                            if(egoMode) {
-                                updateChart(data);
-                                render();
-                            }
-                            else {
-                                d3.select("label[for='ego']").text(" show ego network");
-                                d3.select(".ego_network_toggle")
-                                    .style("opacity", "1")
-                                    .style("pointer-events", "all");
-                            }
-                            
-                        } else {
-                            if (egoMode) {
-                                d3.select(".ego_network_toggle")
-                                    .style("opacity", "1")
-                                    .style("pointer-events", "all");
-                            } else {
-                            d3.select(".ego_network_toggle")
-                                .style("opacity", "0")
-                                .style("pointer-events", "none");
+
+                        egoAnchor = d;
+                        const egoLabel = d3.select("label[for='ego']");
+                        const egoContainer = d3.select(".ego_network_toggle");
+                        if(d.Type === 'author') {
+                            egoLabel.text(egoMode ? "hide co-authorship" : "show co-authorship");
+                            egoContainer.style('opacity', '1').style('pointer-events', 'all');
                         }
-                    }
+                        else if (d.Type === 'proposal' || d.Type === 'publication') {
+                            egoLabel.text(egoMode ? "hide ego network" : "show ego network");
+                            egoContainer.style('opacity', '1').style('pointer-events', 'all');
+                        } else {
+                            egoContainer.style('opacity', '0').style('pointer-events', 'none');
+                        }
+                        
+                        if(egoMode) {
+                            rebuildNetworkSet();
+                            updateChart(data);
+                            render();
+                        }
                         
                         const piName = d['Proposal PI'] || 'NA';
                         const fullAuthorList = d.authorName || "";
@@ -872,7 +890,8 @@
                                 <p style="margin-top: 4px; margin-bottom: 12px; font-size: 0.97em; color: #444;">
                                     ${d['department']}
                                 </p>
-                            `);                        
+                            `);      
+                                            
                         }
                         else if ( d.Type === 'proposal') {
                             const authorSuffix = otherAuthorsArr.length > 0 ? `, ${fullOtherAuthors}` : "";
@@ -992,14 +1011,19 @@
                 egoMode = !egoMode;
 
                 if (egoMode) {
-                    d3.select(this).text(" hide ego network");
+                    const text = (egoAnchor && egoAnchor.Type === 'author') ? " hide co-authorship" : " hide ego network";
+                    d3.select(this).text(text);
                     clear(true, true);
                     showAuthors = true;
                     d3.select("#authors").property("checked", true);
                     d3.select("label[for='authors']").classed("inactive-text", false);
+
+                    rebuildNetworkSet();
                     
                 } else {
-                    d3.select(this).text(" show ego network");
+                    const text = (egoAnchor && egoAnchor.Type === 'author') ? " show co-authorship" : " show ego network";
+                    d3.select(this).text(text);
+                    networkSet.clear();
                 }
 
                 updateChart(data);
