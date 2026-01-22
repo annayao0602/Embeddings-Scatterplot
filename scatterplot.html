@@ -13,14 +13,19 @@
 
 </head>
 <style> 
-    html, body {
+    html {
+        height: 100%;
+        font-size: 100%;
+    } 
+    
+    body {
         height: 100%;
         margin: 0;
         padding: 0;
         overflow: hidden; 
         font-family: 'Inria Serif', sans-serif;
         background-color: #f9f9f9;
-        font-size: 14px;
+        font-size: 0.875rem;
         color: #002E63;
     }
     #my_scatter {
@@ -30,10 +35,10 @@
     .tooltip {	
         position: absolute;			
         text-align: left;			
-        width: 250px;					
+        width: 15.6rem;;					
         height: auto;					
-        padding: 10px;				
-        font: 12px 'Inria Serif', sans-serif;		
+        padding: 0.625rem;				
+        font: 0.75rem 'Inria Serif', sans-serif;		
         background: white;	
         border: 1px solid #ccc;		
         border-radius: 8px;			
@@ -59,13 +64,13 @@
         display: flex;
         overflow: hidden;
         flex-direction: column;
-        gap: 10px;
-        padding: 10px;
+        gap: 0.625rem;
+        padding: 0.625rem;
         box-sizing: border-box;
     }
     #color-mode-select {
         font-family: 'Inria Serif';
-        font-size: 14px;
+        font-size: 0.875rem;
         cursor: pointer;
     }
     .inactive-highlight {
@@ -76,6 +81,11 @@
         display: flex;
         flex-direction: row;
         gap: 120px;
+    }
+    #scatterplot-button a p, 
+    #kdeplot-button a p, 
+    #about-button a p {
+        font-size: 1.125rem !important; 
     }
     #kde-control a {
         font-family: 'Inria Serif';
@@ -103,15 +113,15 @@
         display: flex;
         justify-content: flex-start;
         align-items: center;
-        gap: 15px;
+        gap: 0.875rem;
     }
     #outer-header-container {
         display: flex;
         justify-content: space-between;
         flex-direction: column;
         align-items: center;
-        padding: 20px;
-        margin-right: 20px;
+        padding: 1rem;
+        margin-right: 1rem;
     }
     #header-main-content {
         display: flex;
@@ -132,14 +142,14 @@
         gap: 40px;
     }
     #color-mode-control {
-        font-size: 16px;
+        font-size: 1rem;
     }
     #color-mode-select {
-        font-size: 16px;
+        font-size: 1rem;
         color: #002E63;
     }
     #checkboxes {
-        font-size: 16px;
+        font-size: 1rem;
         display: flex;
         flex-direction: row;
         justify-content: space-between;
@@ -228,17 +238,17 @@
             </div>
             <div id = 'buttons'>
                 <div id = 'scatterplot-button'>
-                    <a href = "scatterplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
+                    <a href = "scatterplot.html" style="text-decoration: none; color: #002E63;">
                         <p>scatterplot</p>
                     </a>
                 </div>
                 <div id = 'kdeplot-button'>
-                    <a href = "kdeplot.html" style="text-decoration: none; color: #002E63; font-size: 18px;">
+                    <a href = "kdeplot.html" style="text-decoration: none; color: #002E63;">
                         <p>density plot</p>
                     </a>
                 </div>
                 <div id = 'about-button'>
-                    <a href = "about.html" style="text-decoration: none; color: #002E63; font-size: 18px">
+                    <a href = "about.html" style="text-decoration: none; color: #002E63;">
                         <p>about</p>
                     </a>
                 </div>
@@ -286,7 +296,7 @@
                         <input type = "text" id="search-input" placeholder="search by title, pi, or author name" style="width: 300px; padding: 8px; margin-top: 7px; margin-right: 0px; box-sizing: border-box; font-family: 'Inria Serif'; color: #002E63;">
                     </div>
                     <div id = "clear">
-                        <a href="#" id="clear-search" style="font-family: 'Inria Serif'; font-size: 14px; margin-left: 8px; color: #002E63; text-decoration: none;">clear search</a>
+                        <a href="#" id="clear-search" style="font-family: 'Inria Serif'; font-size: 0.875rem; margin-left: 8px; color: #002E63; text-decoration: none;">clear search</a>
                     </div>
                 </div>
             </div>
@@ -411,8 +421,8 @@
             const x = d3.scaleLinear().domain([min_x, max_x]).nice();
             const y = d3.scaleLinear().domain([min_y, max_y]).nice();
 
-            let showPublications = true;
             let showProposals = true;
+            let showPublications = true;
             let showAuthors = true;
             let highlightData = []; 
             let colorMode = 'research category';
@@ -535,6 +545,7 @@
                             return [0.8, 0.8, 0.8, 0.7]; 
                         }
                     }
+                    
                     const isMatch = matchesSearch(d);
                     
                     if(searchTerm !== '' && !isMatch) {
