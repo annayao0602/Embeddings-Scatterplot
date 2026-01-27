@@ -281,7 +281,7 @@
         const yPadding = (yExtent[1] - yExtent[0]) * 0.1;
         const xPadding = (xExtent[1] - xExtent[0]) * 0.1;
 
-        const selected_metric = d3.select("#kde-metric").property("value");
+        let selected_metric = d3.select("#kde-metric").property("value");
         let showPublications = true;
         let showProposals = true;
         let showAuthors = true;
@@ -514,30 +514,93 @@
 
         
         d3.select("#kde-metric").on("change", function() {
+            selected_metric = this.value;
             drawChart(this.value);
         })
 
+        const handleCheckboxChange = (type) => {
+                const currentActive = [];
+                if (showPublications) currentActive.push('publication');
+                if (showProposals) currentActive.push('proposals');
+                if (showAuthors) currentActive.push('authors');
+
+                const isClickedActive = currentActive.includes(type);
+                
+                //only prop
+                if(selected_metric === 'hit_rate') {
+                    if (type === 'publication' || type === 'authors') {
+                        return;
+                    }
+                    if (isClickedActive) {
+                        //if clicked is active, turn it off
+                        showProposals = true;
+                    } else {
+                        //if clicked is not active, turn it on
+                        showProposals = false;
+                    }
+                }
+                else if(selected_metric === 'density') {
+                    if (isClickedActive) {
+                        //if only one active and clicked again, reset all to show
+                        if (currentActive.length === 1 && currentActive[0] === type) {
+                            showPublications = true;
+                            showProposals = true;
+                            showAuthors = true;
+                            console.log("reset all to show");
+                        } else if (currentActive.length === 2 && currentActive.includes(type)) {
+                            //if two active and clicked one, turn off the clicked one, leave the other
+                            if (type === 'publication') {
+                                showPublications = false;
+                            } else if (type === 'proposals') {
+                                showProposals = false;
+                            } else if (type === 'authors') {
+                                showAuthors = false;
+                            }
+                            console.log("turn off clicked");
+                        } else {
+                            //if there are other active, clicking one displays it
+                            showPublications = (type === 'publications');
+                            showProposals = (type === 'proposals');
+                            showAuthors = (type === 'authors');
+                            console.log("show only clicked");
+                        }
+                    } else {
+                        //if clicked is not active yet, just activate it
+                        //if its the last one, activate all
+                        if (type === 'publications') {
+                            showPublications = true;
+                        } else if (type === 'proposals') {
+                            showProposals = true;
+                        } else if (type === 'authors') {
+                            showAuthors = true;
+                        }
+                        console.log("activate clicked");
+                    }
+                }
+
+                d3.select("label[for='publication']").classed("inactive-text", !showPublications);
+                d3.select("#publication").property("checked", showPublications);
+                d3.select("label[for='proposals']").classed("inactive-text", !showProposals);
+                d3.select("#proposals").property("checked", showProposals);
+                d3.select("label[for='authors']").classed("inactive-text", !showAuthors);
+                d3.select("#authors").property("checked", showAuthors);
+
+                console.log(`showPublications: ${showPublications}, showProposals: ${showProposals}, showAuthors: ${showAuthors}`);
+                drawChart(selected_metric);
+            }
+
         d3.select("#publication").on("change", function() {
             showPublications = this.checked;
-            d3.select("label[for='publication']").classed("inactive-text", !showPublications);
-    
-            const currentMetric = d3.select("#kde-metric").property("value");
-            drawChart(currentMetric);
+            handleCheckboxChange('publication');
         });
 
         d3.select("#proposals").on("change", function() {
             showProposals = this.checked;
-            d3.select("label[for='proposals']").classed("inactive-text", !showProposals);
-    
-            const currentMetric = d3.select("#kde-metric").property("value");
-            drawChart(currentMetric);
+            handleCheckboxChange('proposals');
         });
         d3.select("#authors").on("change", function() {
             showAuthors = this.checked;
-            d3.select("label[for='authors']").classed("inactive-text", !showAuthors);
-    
-            const currentMetric = d3.select("#kde-metric").property("value");
-            drawChart(currentMetric);
+            handleCheckboxChange('authors');
         });
 
         const initial_metric = d3.select("#kde-metric").property("value");
