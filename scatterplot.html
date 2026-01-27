@@ -992,36 +992,101 @@
                 }
             });
 
-            d3.select("label[for='publications']").on("click", function() {
-                if (colorMode !== 'research category' && colorMode !== 'field') return;
-                showPublications = !showPublications;
-                d3.select(this).classed("inactive-text", !showPublications);
-    
+            const handleCheckboxChange = (type) => {
+                //behavior for all three checkboxes
+                const currentActive = [];
+                if (showPublications) currentActive.push('publications');
+                if (showProposals) currentActive.push('proposals');
+                if (showAuthors) currentActive.push('authors');
+
+                const isClickedActive = currentActive.includes(type);
+
+                if(colorMode === 'field') {
+                    if (type === 'publications') {
+                        if (isClickedActive && currentActive[0] === 'publications') {
+                            showPublications = true;
+                            showProposals = false;
+                        } else {
+                            showPublications = false;
+                            showProposals = true;
+                        }
+                        console.log(`showPublications toggled to ${showPublications}`);
+                    }
+                    else if (type === 'proposals') {
+                        if (isClickedActive) {
+                            showProposals = true;
+                            showPublications = false;
+                        } else {
+                            showProposals = false;
+                            showPublications = true;
+                        }
+                        console.log(`showProposals toggled to ${showProposals}`);
+                    }
+                }
+                else if(colorMode === 'research category') {
+                    if (isClickedActive) {
+                        //if only one active and clicked again, reset all to show
+                        if (currentActive.length === 1 && currentActive[0] === type) {
+                            showPublications = true;
+                            showProposals = true;
+                            showAuthors = true;
+                            console.log("reset all to show");
+                        } else if (currentActive.length === 2 && currentActive.includes(type)) {
+                            //if two active and clicked one, turn off the clicked one, leave the other
+                            if (type === 'publications') {
+                                showPublications = false;
+                            } else if (type === 'proposals') {
+                                showProposals = false;
+                            } else if (type === 'authors') {
+                                showAuthors = false;
+                            }
+                            console.log("turn off clicked");
+                        } else {
+                            //if there are other active, clicking one displays it
+                            showPublications = (type === 'publications');
+                            showProposals = (type === 'proposals');
+                            showAuthors = (type === 'authors');
+                            console.log("show only clicked");
+                        }
+                    } else {
+                        //if clicked is not active yet, just activate it
+                        //if its the last one, activate all
+                        if (type === 'publications') {
+                            showPublications = true;
+                        } else if (type === 'proposals') {
+                            showProposals = true;
+                        } else if (type === 'authors') {
+                            showAuthors = true;
+                        }
+                        console.log("activate clicked");
+                    }
+                }
+
+                d3.select("label[for='publications']").classed("inactive-text", !showPublications);
                 d3.select("#publications").property("checked", showPublications);
-    
+                d3.select("label[for='proposals']").classed("inactive-text", !showProposals);
+                d3.select("#proposals").property("checked", showProposals);
+                d3.select("label[for='authors']").classed("inactive-text", !showAuthors);
+                d3.select("#authors").property("checked", showAuthors);
+
+                console.log(`showPublications: ${showPublications}, showProposals: ${showProposals}, showAuthors: ${showAuthors}`);
+
                 updateChart(data);
                 render();
+            }
+
+            d3.select("label[for='publications']").on("click", function() {
+                if (colorMode !== 'research category' && colorMode !== 'field') return;
+                handleCheckboxChange('publications');
             });
 
             d3.select("label[for='proposals']").on("click", function() {
-                showProposals = !showProposals;
-
-                d3.select(this).classed("inactive-text", !showProposals);
-    
-                d3.select("#proposals").property("checked", showProposals);
-                updateChart(data);
-                render();
+                handleCheckboxChange('proposals');
             });
 
             d3.select("label[for='authors']").on("click", function() {
                 if (colorMode !== 'research category') return;
-                showAuthors = !showAuthors;
-
-                d3.select(this).classed("inactive-text", !showAuthors);
-
-                d3.select("#authors").property("checked", showAuthors);
-                updateChart(data);
-                render();
+                handleCheckboxChange('authors');
             });
 
             d3.select("label[for='ego']").on("click", function() {
