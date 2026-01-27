@@ -4,7 +4,7 @@ export const updateLegend = (data, colorMode, getSponsorCategory, getAwardedStat
     const legend = legendContainer.append("div").attr("class", "legend-items");
 
     if(colorMode === 'research category') {
-        legend.append("p").text("click on toggles above or categories below to highlight corresponding points").attr("style", "font-size: 14px;");
+        legend.append("p").text("click on toggles above to highlight corresponding points").attr("style", "font-size: 14px;");
         const groupedCounts = d3.rollup(
             data,
             v => v.length, 
