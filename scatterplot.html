@@ -993,36 +993,45 @@
             });
 
             const handleCheckboxChange = (type) => {
-                //behavior for all three checkboxes
                 const currentActive = [];
                 if (showPublications) currentActive.push('publications');
                 if (showProposals) currentActive.push('proposals');
                 if (showAuthors) currentActive.push('authors');
 
                 const isClickedActive = currentActive.includes(type);
+                
 
                 if(colorMode === 'field') {
-                    if (type === 'publications') {
-                        if (isClickedActive && currentActive[0] === 'publications') {
+                    //only pub and prop - clicking one disables the other - clicking it again makes both visible again
+                    //clicking
+                    if (isClickedActive) { 
+                        if (currentActive.length === 1 && currentActive[0] === type) {
                             showPublications = true;
-                            showProposals = false;
-                        } else {
-                            showPublications = false;
+                            showProposals = true;
+                            console.log("reset both to show");
+                        }
+                        else {
+                            if (type === 'publications') {
+                                showProposals = false;
+                                showPublications = true;
+                            } else if (type === 'proposals') {
+                                showPublications = false;
+                                showProposals = true;
+                            }
+                            console.log("toggle clicked");
+                        }      
+                    }
+                    else {
+                        if (type === 'publications') {
+                            showPublications = true;
+                        } else if (type === 'proposals') {
                             showProposals = true;
                         }
-                        console.log(`showPublications toggled to ${showPublications}`);
+                        console.log("activate clicked");
                     }
-                    else if (type === 'proposals') {
-                        if (isClickedActive) {
-                            showProposals = true;
-                            showPublications = false;
-                        } else {
-                            showProposals = false;
-                            showPublications = true;
-                        }
-                        console.log(`showProposals toggled to ${showProposals}`);
-                    }
+
                 }
+                
                 else if(colorMode === 'research category') {
                     if (isClickedActive) {
                         //if only one active and clicked again, reset all to show
@@ -1060,6 +1069,10 @@
                         }
                         console.log("activate clicked");
                     }
+                }
+                else {
+                    //other color modes - just toggle
+                    showProposals = (type === 'proposals') ? !showProposals : showProposals;                   
                 }
 
                 d3.select("label[for='publications']").classed("inactive-text", !showPublications);
