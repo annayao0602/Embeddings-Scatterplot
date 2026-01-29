@@ -206,11 +206,11 @@
     .ego_network_toggle {
         position: absolute;
         bottom: 50px;
-        right: 250px;
+        right: 250px;        
         cursor: pointer;
         z-index: 1000;
     }
-    .ego_label {
+    .ego-label {
         cursor: pointer !important;
         padding: 5px;
 
@@ -220,8 +220,12 @@
         cursor: pointer;
         background-color: #d6d6d6;
         transition: background-color 0.3s ease-in-out;
-
     }
+    .ego_network_toggle.active {
+        background-color: #d6d6d6;
+        scale: 1.1;
+    }
+    
 
 
 </style>
@@ -480,6 +484,7 @@
 
                 if (egoAnchor.Type === 'author') {
                     const targetName = egoAnchor.authorName.toLowerCase();
+                    console.log("Rebuilding ego network for author:", targetName);
                     
                     data.forEach(d => {
                         if ((d.Type === 'proposal' || d.Type === 'publication') && 
@@ -490,7 +495,6 @@
                                 networkSet.add(name.trim().toLowerCase());
                             });
                         }
-                        console.log(networkSet);
                     });
                 } 
                 else if (egoAnchor.authorName) {
@@ -861,16 +865,22 @@
                         egoAnchor = d;
                         const egoLabel = d3.select("label[for='ego']");
                         const egoContainer = d3.select(".ego_network_toggle");
-                        if(d.Type === 'author') {
-                            egoLabel.text(egoMode ? "hide co-authorship" : "show co-authorship");
-                            egoContainer.style('opacity', '1').style('pointer-events', 'all');
+                        if(colorMode === 'research category') {
+                            if(d.Type === 'author') {
+                                egoLabel.text(egoMode ? "hide co-authorship" : "show co-authorship");
+                                egoContainer.style('opacity', '1').style('pointer-events', 'all');
+                            }
+                            else if (d.Type === 'proposal' || d.Type === 'publication') {
+                                egoLabel.text(egoMode ? "hide ego network" : "show ego network");
+                                egoContainer.style('opacity', '1').style('pointer-events', 'all');
+                            } else {
+                                egoContainer.style('opacity', '0').style('pointer-events', 'none');
+                            }
                         }
-                        else if (d.Type === 'proposal' || d.Type === 'publication') {
-                            egoLabel.text(egoMode ? "hide ego network" : "show ego network");
-                            egoContainer.style('opacity', '1').style('pointer-events', 'all');
-                        } else {
+                        else {
                             egoContainer.style('opacity', '0').style('pointer-events', 'none');
                         }
+                        
                         
                         if(egoMode) {
                             rebuildNetworkSet();
@@ -1106,18 +1116,43 @@
                 egoMode = !egoMode;
 
                 if (egoMode) {
+                    d3.select(".ego_network_toggle").classed("active", egoMode);
+
                     const text = (egoAnchor && egoAnchor.Type === 'author') ? " hide co-authorship" : " hide ego network";
                     d3.select(this).text(text);
                     clear(true, true);
+
                     showAuthors = true;
+                    showProposals = true;
+                    showPublications = true;
                     d3.select("#authors").property("checked", true);
                     d3.select("label[for='authors']").classed("inactive-text", false);
+
+                    d3.select("#proposals").property("checked", true);
+                    d3.select("label[for='proposals']").classed("inactive-text", false);
+
+                    d3.select("#publications").property("checked", true);
+                    d3.select("label[for='publications']").classed("inactive-text", false);
 
                     rebuildNetworkSet();
                     
                 } else {
+                    d3.select(".ego_network_toggle").classed("active", false);
                     const text = (egoAnchor && egoAnchor.Type === 'author') ? " show co-authorship" : " show ego network";
                     d3.select(this).text(text);
+
+                    showAuthors = true;
+                    showProposals = true;
+                    showPublications = true;
+
+                    d3.select("#authors").property("checked", true);
+                    d3.select("label[for='authors']").classed("inactive-text", false);
+
+                    d3.select("#proposals").property("checked", true);
+                    d3.select("label[for='proposals']").classed("inactive-text", false);
+
+                    d3.select("#publications").property("checked", true);
+                    d3.select("label[for='publications']").classed("inactive-text", false);
                     networkSet.clear();
                 }
 
@@ -1143,6 +1178,13 @@
 
             d3.select('#color-mode-select').on('change', (event) => {
                 colorMode = event.target.value;
+
+                if(colorMode !== 'research category') {
+                    egoMode = false;
+                    d3.select(".ego_network_toggle").classed("active", false);
+                    d3.select("label[for='ego']").text("");
+                    networkSet.clear();
+                }
 
                 highlightedCategories = [];
                 if (colorMode === 'research category' || colorMode === 'field') {
